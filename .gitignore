@@ -1,0 +1,4 @@
+# Datos con informacion personal de estudiantes (nombres, calificaciones) - no se versionan
+*.xlsx
+*.xls
+~$*.xlsx
