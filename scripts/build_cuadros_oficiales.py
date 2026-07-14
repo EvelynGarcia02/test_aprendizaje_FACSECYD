@@ -1,6 +1,7 @@
 """
-Regenera Cuadros_oficiales_por_carrera.xlsx a partir de informe_test_aprendizaje.xlsx,
-replicando el formato original (bandas de color, encabezados, ítems críticos en rojo).
+Regenera data/Cuadros_oficiales_por_carrera.xlsx a partir de
+data/informe_test_aprendizaje.xlsx, replicando el formato original
+(bandas de color, encabezados, ítems críticos en rojo).
 
 Uso:
     python scripts/build_cuadros_oficiales.py
@@ -15,8 +16,8 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 ROOT = Path(__file__).resolve().parent.parent
-XLS = ROOT / "informe_test_aprendizaje.xlsx"
-OUT = ROOT / "Cuadros_oficiales_por_carrera.xlsx"
+XLS = ROOT / "data" / "informe_test_aprendizaje.xlsx"
+OUT = ROOT / "data" / "Cuadros_oficiales_por_carrera.xlsx"
 
 NAVY = "1F3864"
 LIGHT_BLUE = "DCE6F1"

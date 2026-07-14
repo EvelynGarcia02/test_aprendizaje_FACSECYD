@@ -1,5 +1,5 @@
 """
-Regenera js/data.js a partir de informe_test_aprendizaje.xlsx.
+Regenera js/data.js a partir de data/informe_test_aprendizaje.xlsx.
 
 Uso:
     python scripts/extract_data.py
@@ -7,10 +7,10 @@ Uso:
 Requiere: pandas, openpyxl  (pip install pandas openpyxl)
 
 Lee las hojas Cohorte_Global, Cohorte_x_Competencia, Aciertos_x_Item,
-Estudiante_Global y Estudiante_x_Competencia de informe_test_aprendizaje.xlsx
-(debe estar en la carpeta raiz del proyecto) y escribe un unico archivo JS
-con "const DATA = {...};" que el dashboard carga directamente (sin fetch,
-para que funcione abriendo index.html sin necesidad de un servidor local).
+Estudiante_Global y Estudiante_x_Competencia de data/informe_test_aprendizaje.xlsx
+y escribe un unico archivo JS con "const DATA = {...};" que el dashboard
+carga directamente (sin fetch, para que funcione abriendo index.html sin
+necesidad de un servidor local).
 """
 import json
 from pathlib import Path
@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
-XLS = ROOT / "informe_test_aprendizaje.xlsx"
+XLS = ROOT / "data" / "informe_test_aprendizaje.xlsx"
 OUT = ROOT / "js" / "data.js"
 
 

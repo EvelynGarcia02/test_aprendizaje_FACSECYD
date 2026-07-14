@@ -10,11 +10,17 @@ css/styles.css        # estilos
 js/data.js            # datos agregados (por curso/competencia/ítem, sin datos de estudiantes)
 js/app.js             # lógica de renderizado del dashboard
 scripts/
-  extract_data.py            # regenera js/data.js desde informe_test_aprendizaje.xlsx
-  build_cuadros_oficiales.py # regenera Cuadros_oficiales_por_carrera.xlsx (formato oficial, 6 hojas)
+  extract_data.py            # regenera js/data.js desde data/informe_test_aprendizaje.xlsx
+  build_cuadros_oficiales.py # regenera data/Cuadros_oficiales_por_carrera.xlsx (formato oficial, 6 hojas)
+data/                  # excel crudos y generados (NO se versionan, ver abajo)
+  test_aprendizaje_v3.xlsx
+  informe_test_aprendizaje.xlsx
+  Cuadros_oficiales_por_carrera.xlsx
+docs/                  # informes Word de referencia por carrera (NO se versionan)
+  Informe Test de Aprendizaje Economía Presencial (1).docx
 ```
 
-Los archivos `.xlsx` (datos crudos con nombres y calificaciones de estudiantes) **no se versionan** — están en `.gitignore` porque contienen información personal. Deben mantenerse solo localmente.
+Todo lo que hay en `data/` y `docs/` (datos crudos con nombres/calificaciones de estudiantes, e informes internos con firmas de funcionarios) **no se versiona** — se mantiene solo localmente. Los `.xlsx` están en `.gitignore`; los archivos de `docs/` se excluyen manualmente al hacer commit (no se les hace `git add`).
 
 ## Ver el dashboard
 
@@ -35,7 +41,7 @@ Si el enlace todavía no carga, falta activar GitHub Pages una sola vez (ver aba
 
 ## Actualizar los datos (nuevo TA3, correcciones, etc.)
 
-1. Reemplaza/actualiza `informe_test_aprendizaje.xlsx` en la raíz del proyecto con la versión nueva.
+1. Reemplaza/actualiza `data/informe_test_aprendizaje.xlsx` con la versión nueva.
 2. Instala dependencias una vez: `pip install pandas openpyxl`
 3. Corre: `python scripts/extract_data.py` → regenera `js/data.js` (dashboard). Recarga `index.html` para ver los cambios.
-4. Corre: `python scripts/build_cuadros_oficiales.py` → regenera `Cuadros_oficiales_por_carrera.xlsx` (6 hojas, una por carrera, con el mismo formato oficial). Este archivo se queda solo en tu máquina, no se sube a git.
+4. Corre: `python scripts/build_cuadros_oficiales.py` → regenera `data/Cuadros_oficiales_por_carrera.xlsx` (6 hojas, una por carrera, con el mismo formato oficial).
