@@ -115,3 +115,13 @@ table.datatable tr:last-child td{border-bottom:none;}
 
 .empty-note{font-size:12.5px;color:var(--text-muted);padding:8px 0;}
 .footer-note{font-size:11.5px;color:var(--text-muted);margin-top:24px;line-height:1.6;}
+
+/* interactivity: click-to-filter / click-to-navigate */
+.dumbbell-row.clickable, .stack-row.clickable{cursor:pointer;border-radius:8px;transition:background .12s;}
+.dumbbell-row.clickable:hover, .stack-row.clickable:hover{background:var(--gridline);}
+.legend-item.toggle{cursor:pointer;user-select:none;transition:opacity .12s;}
+.legend-item.toggle:hover{opacity:.75;}
+.legend-item.toggle.off{opacity:.35;}
+.gbar-col.selected{outline:2px solid var(--text-primary);outline-offset:1px;}
+.filter-chip{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;background:var(--gridline);color:var(--text-primary);padding:5px 8px 5px 12px;border-radius:999px;cursor:pointer;margin-bottom:12px;border:none;font-family:inherit;}
+.filter-chip .x{font-weight:700;font-size:13px;}

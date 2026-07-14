@@ -93,7 +93,7 @@ gView.appendChild(kpiRow([
 /* --- dumbbell: progreso por programa --- */
 const dCard = el('div',{class:'card'});
 dCard.appendChild(el('h2',null,'Progreso por programa: TA1 → TA2'));
-dCard.appendChild(el('p',{class:'caption'},'Promedio global de la cohorte en cada ronda. Programas ordenados por resultado más reciente (TA2).'));
+dCard.appendChild(el('p',{class:'caption'},'Promedio global de la cohorte en cada ronda. Programas ordenados por resultado más reciente (TA2). Clic en un programa para ver su detalle.'));
 dCard.appendChild(el('div',{class:'legend'},[
   el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
   el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'TA2']),
@@ -101,7 +101,7 @@ dCard.appendChild(el('div',{class:'legend'},[
 const dumbbellSorted = programList.slice().sort((a,b)=> (b.ta2?b.ta2.prom:0) - (a.ta2?a.ta2.prom:0));
 dumbbellSorted.forEach(p=>{
   const v1 = p.ta1? p.ta1.prom : null, v2 = p.ta2? p.ta2.prom : null;
-  const row = el('div',{class:'dumbbell-row'});
+  const row = el('div',{class:'dumbbell-row clickable', onclick:()=>goToProgram(p)});
   row.appendChild(el('div',{class:'dumbbell-label'}, p.label));
   const track = el('div',{class:'dumbbell-track'});
   track.appendChild(el('div',{class:'baseline'}));
@@ -132,16 +132,25 @@ gView.appendChild(dCard);
 /* --- stacked 100% bar: distribución de niveles por programa --- */
 const sCard = el('div',{class:'card'});
 sCard.appendChild(el('h2',null,'Distribución de niveles de logro por programa'));
-sCard.appendChild(el('p',{class:'caption'},'Porcentaje de estudiantes en cada nivel de logro.'));
+sCard.appendChild(el('p',{class:'caption'},'Porcentaje de estudiantes en cada nivel de logro. Clic en un programa para ver su detalle · clic en la leyenda para aislar un nivel.'));
 let stackTA = 2;
 const stackToggle = el('div',{class:'stack-toggle'});
 const btnTA1 = el('button',{class:'pill', onclick:()=>{stackTA=1;renderStack();btnTA1.classList.add('active');btnTA2.classList.remove('active');}},'TA1');
 const btnTA2 = el('button',{class:'pill active', onclick:()=>{stackTA=2;renderStack();btnTA2.classList.add('active');btnTA1.classList.remove('active');}},'TA2');
 stackToggle.appendChild(btnTA1); stackToggle.appendChild(btnTA2);
 sCard.appendChild(stackToggle);
-sCard.appendChild(el('div',{class:'legend'}, ['insuf','ed','sat','sob'].map(k=>
-  el('div',{class:'legend-item'},[el('span',{class:'swatch',style:`background:${NIVEL_COLOR[k]}`}), NIVEL_LABEL[k]])
-)));
+const globalHiddenLevels = new Set();
+const globalLegend = el('div',{class:'legend'});
+['insuf','ed','sat','sob'].forEach(k=>{
+  const item = el('div',{class:'legend-item toggle'},[el('span',{class:'swatch',style:`background:${NIVEL_COLOR[k]}`}), NIVEL_LABEL[k]]);
+  item.addEventListener('click', ()=>{
+    if(globalHiddenLevels.has(k)) globalHiddenLevels.delete(k); else globalHiddenLevels.add(k);
+    item.classList.toggle('off', globalHiddenLevels.has(k));
+    renderStack();
+  });
+  globalLegend.appendChild(item);
+});
+sCard.appendChild(globalLegend);
 const stackBody = el('div',null,null);
 sCard.appendChild(stackBody);
 function renderStack(){
@@ -152,14 +161,14 @@ function renderStack(){
   });
   sorted.forEach(p=>{
     const c = p['ta'+stackTA];
-    const row = el('div',{class:'stack-row'});
+    const row = el('div',{class:'stack-row clickable', onclick:()=>goToProgram(p)});
     row.appendChild(el('div',{class:'stack-label'}, p.label));
     const bar = el('div',{class:'stack-bar'});
     if(c){
       ['insuf','ed','sat','sob'].forEach(k=>{
         const pct = c.pct[k];
         if(pct<=0) return;
-        const seg = el('div',{class:'stack-seg', style:`width:${pct}%;background:${NIVEL_COLOR[k]}`});
+        const seg = el('div',{class:'stack-seg', style:`width:${pct}%;background:${NIVEL_COLOR[k]};opacity:${globalHiddenLevels.has(k)?0.15:1}`});
         attachTip(seg, NIVEL_LABEL[k]+': '+fmt1(pct)+'% ('+c.counts[k]+' est.)');
         bar.appendChild(seg);
       });
@@ -227,16 +236,32 @@ cView.appendChild(selRow);
 cView.appendChild(carreraBody);
 
 let activeProgram = programList[0];
+let carreraCompFilter = null;
+let carreraHiddenLevels = new Set();
+const selBtns = [];
 programList.forEach(p=>{
   const totalN2 = (p.ta1?p.ta1.n:0)+(p.ta2?p.ta2.n:0);
   const btn = el('button',{class:'sel-btn'+(p===activeProgram?' active':''), onclick:()=>{
     activeProgram = p;
-    [...selRow.children].forEach(b=>b.classList.remove('active'));
+    carreraCompFilter = null;
+    carreraHiddenLevels = new Set();
+    selBtns.forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     renderCarrera();
   }},[p.label, el('span',{class:'n'}, totalN2+' estudiantes')]);
+  selBtns.push(btn);
   selRow.appendChild(btn);
 });
+
+function goToProgram(p){
+  activeProgram = p;
+  carreraCompFilter = null;
+  carreraHiddenLevels = new Set();
+  selBtns.forEach((b,i)=> b.classList.toggle('active', programList[i]===p));
+  renderCarrera();
+  const carreraTab = document.querySelector('.tab-btn[data-view="carrera"]');
+  if(carreraTab) carreraTab.click();
+}
 
 const COMP_ORDER = ['CE1','CE2','CE3','CE4','CT1','CT2','CT3','CT4'];
 
@@ -263,7 +288,7 @@ function renderCarrera(){
   /* competencias grouped bars */
   const compCard = el('div',{class:'card'});
   compCard.appendChild(el('h2',null,'Logro por competencia'));
-  compCard.appendChild(el('p',{class:'caption'},'CE = competencia específica de la carrera · CT = competencia transversal. TA1 vs. TA2.'));
+  compCard.appendChild(el('p',{class:'caption'},'CE = competencia específica de la carrera · CT = competencia transversal. TA1 vs. TA2. Clic en una barra para filtrar los ítems críticos por esa competencia.'));
   compCard.appendChild(el('div',{class:'legend'},[
     el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
     el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'TA2']),
@@ -272,21 +297,26 @@ function renderCarrera(){
   const c2list = compByCourse[v2?v2.id:''] || [];
   const codes = COMP_ORDER.filter(code => c1list.some(r=>r.competencia===code) || c2list.some(r=>r.competencia===code));
   const gwrap = el('div',{class:'gbar-wrap'});
+  function toggleCompFilter(code){
+    carreraCompFilter = (carreraCompFilter===code) ? null : code;
+    renderCarrera();
+  }
   codes.forEach(code=>{
     const r1 = c1list.find(r=>r.competencia===code);
     const r2 = c2list.find(r=>r.competencia===code);
     const cat = el('div',{class:'gbar-cat'});
     const bars = el('div',{class:'gbar-bars'});
+    const isSel = carreraCompFilter===code;
     if(r1){
-      const col1 = el('div',{class:'gbar-col', style:`height:${r1.prom}%;background:var(--series-1);opacity:.42`});
+      const col1 = el('div',{class:'gbar-col'+(isSel?' selected':''), style:`height:${r1.prom}%;background:var(--series-1);opacity:.42`, onclick:()=>toggleCompFilter(code)});
       col1.appendChild(el('div',{class:'val'}, fmt1(r1.prom)));
-      attachTip(col1, code+' TA1: '+fmt1(r1.prom)+'% · '+r1.n_items+' preg. · '+r1.nivel);
+      attachTip(col1, code+' TA1: '+fmt1(r1.prom)+'% · '+r1.n_items+' preg. · '+r1.nivel+' · clic para filtrar');
       bars.appendChild(col1);
     }
     if(r2){
-      const col2 = el('div',{class:'gbar-col', style:`height:${r2.prom}%;background:var(--series-1)`});
+      const col2 = el('div',{class:'gbar-col'+(isSel?' selected':''), style:`height:${r2.prom}%;background:var(--series-1)`, onclick:()=>toggleCompFilter(code)});
       col2.appendChild(el('div',{class:'val'}, fmt1(r2.prom)));
-      attachTip(col2, code+' TA2: '+fmt1(r2.prom)+'% · '+r2.n_items+' preg. · '+r2.nivel);
+      attachTip(col2, code+' TA2: '+fmt1(r2.prom)+'% · '+r2.n_items+' preg. · '+r2.nivel+' · clic para filtrar');
       bars.appendChild(col2);
     }
     cat.appendChild(bars);
@@ -301,9 +331,17 @@ function renderCarrera(){
   /* stacked nivel TA1 vs TA2 */
   const sCard2 = el('div',{class:'card'});
   sCard2.appendChild(el('h2',null,'Distribución de niveles: TA1 vs. TA2'));
-  sCard2.appendChild(el('div',{class:'legend'}, ['insuf','ed','sat','sob'].map(k=>
-    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:`background:${NIVEL_COLOR[k]}`}), NIVEL_LABEL[k]])
-  )));
+  sCard2.appendChild(el('p',{class:'caption'},'Clic en la leyenda para aislar un nivel.'));
+  const carreraLegend = el('div',{class:'legend'});
+  ['insuf','ed','sat','sob'].forEach(k=>{
+    const item = el('div',{class:'legend-item toggle'+(carreraHiddenLevels.has(k)?' off':'')},[el('span',{class:'swatch',style:`background:${NIVEL_COLOR[k]}`}), NIVEL_LABEL[k]]);
+    item.addEventListener('click', ()=>{
+      if(carreraHiddenLevels.has(k)) carreraHiddenLevels.delete(k); else carreraHiddenLevels.add(k);
+      renderCarrera();
+    });
+    carreraLegend.appendChild(item);
+  });
+  sCard2.appendChild(carreraLegend);
   [['TA1',v1],['TA2',v2]].forEach(([lbl,c])=>{
     const row = el('div',{class:'stack-row'});
     row.appendChild(el('div',{class:'stack-label'}, lbl));
@@ -312,7 +350,7 @@ function renderCarrera(){
       ['insuf','ed','sat','sob'].forEach(k=>{
         const pct = c.pct[k];
         if(pct<=0) return;
-        const seg = el('div',{class:'stack-seg', style:`width:${pct}%;background:${NIVEL_COLOR[k]}`});
+        const seg = el('div',{class:'stack-seg', style:`width:${pct}%;background:${NIVEL_COLOR[k]};opacity:${carreraHiddenLevels.has(k)?0.15:1}`});
         attachTip(seg, NIVEL_LABEL[k]+': '+fmt1(pct)+'% ('+c.counts[k]+' est.)');
         bar.appendChild(seg);
       });
@@ -326,12 +364,18 @@ function renderCarrera(){
   /* items criticos table */
   const itCard = el('div',{class:'card'});
   itCard.appendChild(el('h2',null,'Ítems críticos (< 40% de aciertos)'));
-  const rows = [];
+  let rows = [];
   if(v1) (itemsByCourse[v1.id]||[]).filter(i=>i.pct<40).forEach(i=>rows.push({...i,ronda:'TA1'}));
   if(v2) (itemsByCourse[v2.id]||[]).filter(i=>i.pct<40).forEach(i=>rows.push({...i,ronda:'TA2'}));
   rows.sort((a,b)=>a.pct-b.pct);
+  if(carreraCompFilter){
+    rows = rows.filter(r=> r.competencias.includes(carreraCompFilter));
+    const chip = el('button',{class:'filter-chip', onclick:()=>{carreraCompFilter=null;renderCarrera();}},
+      ['Filtrando por '+carreraCompFilter, el('span',{class:'x'},'✕')]);
+    itCard.appendChild(chip);
+  }
   if(rows.length===0){
-    itCard.appendChild(el('div',{class:'empty-note'},'Ninguno. Todos los ítems superan el 40% de aciertos en este programa.'));
+    itCard.appendChild(el('div',{class:'empty-note'}, carreraCompFilter? 'Ningún ítem crítico para '+carreraCompFilter+' en este programa.' : 'Ninguno. Todos los ítems superan el 40% de aciertos en este programa.'));
   } else {
     const table = el('table',{class:'datatable'});
     const thead = el('tr',null,[el('th',null,'Ronda'),el('th',null,'Código'),el('th',null,'Competencias'),el('th',null,'% Aciertos')]);
