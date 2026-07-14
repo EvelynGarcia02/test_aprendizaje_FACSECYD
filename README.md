@@ -10,7 +10,8 @@ css/styles.css        # estilos
 js/data.js            # datos agregados (por curso/competencia/ítem, sin datos de estudiantes)
 js/app.js             # lógica de renderizado del dashboard
 scripts/
-  extract_data.py     # regenera js/data.js desde informe_test_aprendizaje.xlsx
+  extract_data.py            # regenera js/data.js desde informe_test_aprendizaje.xlsx
+  build_cuadros_oficiales.py # regenera Cuadros_oficiales_por_carrera.xlsx (formato oficial, 6 hojas)
 ```
 
 Los archivos `.xlsx` (datos crudos con nombres y calificaciones de estudiantes) **no se versionan** — están en `.gitignore` porque contienen información personal. Deben mantenerse solo localmente.
@@ -36,5 +37,5 @@ Si el enlace todavía no carga, falta activar GitHub Pages una sola vez (ver aba
 
 1. Reemplaza/actualiza `informe_test_aprendizaje.xlsx` en la raíz del proyecto con la versión nueva.
 2. Instala dependencias una vez: `pip install pandas openpyxl`
-3. Corre: `python scripts/extract_data.py`
-4. Esto regenera `js/data.js`. Recarga `index.html` en el navegador para ver los cambios.
+3. Corre: `python scripts/extract_data.py` → regenera `js/data.js` (dashboard). Recarga `index.html` para ver los cambios.
+4. Corre: `python scripts/build_cuadros_oficiales.py` → regenera `Cuadros_oficiales_por_carrera.xlsx` (6 hojas, una por carrera, con el mismo formato oficial). Este archivo se queda solo en tu máquina, no se sube a git.
