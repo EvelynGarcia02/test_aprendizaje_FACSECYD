@@ -91,13 +91,16 @@ table.datatable{width:100%;border-collapse:collapse;font-size:12.5px;}
 table.datatable th{text-align:left;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.02em;border-bottom:1px solid var(--gridline);padding:8px 10px;}
 table.datatable td{padding:8px 10px;border-bottom:1px solid var(--gridline);color:var(--text-primary);}
 table.datatable tr:last-child td{border-bottom:none;}
+table.datatable tr.clickable{cursor:pointer;}
+table.datatable tr.clickable:hover td{background:var(--gridline);}
 .tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;color:#fff;}
 .tag.ed{color:#1a1a19;}
 
 table.heatmap{table-layout:fixed;}
 table.heatmap th{text-align:center;padding:6px 4px;}
 table.heatmap th:first-child{width:52px;}
-table.heatmap td.heat-cell{text-align:center;font-weight:600;padding:12px 6px;border-bottom:2px solid var(--surface-1);border-radius:4px;cursor:default;}
+table.heatmap td.heat-cell{text-align:center;font-weight:600;padding:12px 6px;border-bottom:2px solid var(--surface-1);border-radius:4px;cursor:pointer;transition:outline-color .12s;}
+table.heatmap td.heat-cell.selected{outline:2px solid var(--text-primary);outline-offset:-2px;}
 table.heatmap td:first-child{border-bottom:none;padding:8px 6px;}
 .heat-scale{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:11px;color:var(--text-muted);}
 .heat-scale-bar{flex:1;max-width:180px;height:8px;border-radius:4px;background:linear-gradient(to right, var(--surface-1), var(--series-1));border:1px solid var(--border);}
