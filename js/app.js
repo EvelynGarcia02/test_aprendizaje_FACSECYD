@@ -82,8 +82,11 @@ function kpiRow(items){
   return row;
 }
 
+const carreraCount = new Set(DATA.courses.map(c=>c.carrera)).size;
+const programCount = programList.length;
+
 gView.appendChild(kpiRow([
-  {label:'Evaluaciones aplicadas (TA1+TA2)', value: totalN.toLocaleString('es-EC'), sub: DATA.courses.length+' cohortes · 5 carreras'},
+  {label:'Evaluaciones aplicadas (TA1+TA2)', value: totalN.toLocaleString('es-EC'), sub: DATA.courses.length+' aplicaciones del test · '+carreraCount+' carreras · '+programCount+' programas'},
   {label:'Promedio institucional', value: fmt1(promInst)+'%'},
   {label:'% Satisfactorio o superior', value: fmt1(totalSatSob/totalN*100)+'%', sub: totalSatSob.toLocaleString('es-EC')+' de '+totalN.toLocaleString('es-EC')+' evaluaciones'},
   {label:'Variación institucional TA1 → TA2', value:(deltaInst>=0?'+':'')+fmt1(deltaInst)+' pts',
@@ -93,7 +96,7 @@ gView.appendChild(kpiRow([
 /* --- dumbbell: progreso por programa --- */
 const dCard = el('div',{class:'card'});
 dCard.appendChild(el('h2',null,'Progreso por programa: TA1 → TA2'));
-dCard.appendChild(el('p',{class:'caption'},'Promedio global de la cohorte en cada ronda. Programas ordenados por resultado más reciente (TA2). Clic en un programa para ver su detalle.'));
+dCard.appendChild(el('p',{class:'caption'},'Promedio global de los estudiantes evaluados en cada ronda. Programas ordenados por resultado más reciente (TA2). Clic en un programa para ver su detalle.'));
 dCard.appendChild(el('div',{class:'legend'},[
   el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
   el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'TA2']),
@@ -194,7 +197,7 @@ const grid2 = el('div',{class:'grid-2'});
 
 const ceCard = el('div',{class:'card'});
 ceCard.appendChild(el('h2',null,'Competencias específicas vs. transversales'));
-ceCard.appendChild(el('p',{class:'caption'},'Promedio de logro institucional, todas las cohortes.'));
+ceCard.appendChild(el('p',{class:'caption'},'Promedio de logro institucional, todas las aplicaciones del test.'));
 [['Específicas (CE)',avgCE,'var(--series-1)'], ['Transversales (CT)',avgCT,'var(--series-2)']].forEach(([label,val,color])=>{
   const row = el('div',{class:'hbar-row', style:'grid-template-columns:130px 1fr 46px'});
   row.appendChild(el('div',{class:'hlabel'},[el('b',null,label)]));
@@ -403,4 +406,4 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 });
 
 /* ---------- data notice ---------- */
-document.getElementById('dataNotice').textContent = 'Nota: se incluyen '+DATA.courses.length+' cohortes (TA1+TA2) de 5 carreras. El programa "Economía (Presencial)" se reconstruyó desde informe_test_aprendizaje.xlsx porque no figuraba en Cuadros_oficiales_por_carrera.xlsx.';
+document.getElementById('dataNotice').textContent = 'Nota: se incluyen '+DATA.courses.length+' aplicaciones del test (TA1+TA2) de '+carreraCount+' carreras ('+programCount+' programas contando modalidad presencial/en línea por separado). El programa "Economía (Presencial)" se reconstruyó desde informe_test_aprendizaje.xlsx porque no figuraba en Cuadros_oficiales_por_carrera.xlsx.';

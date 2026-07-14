@@ -103,7 +103,7 @@ def main():
         json.dump(data, f, ensure_ascii=False)
         f.write(";\n")
 
-    print(f"Escrito {OUT} — {len(courses)} cohortes, {len(competencias)} filas de competencia, {len(items)} items.")
+    print(f"Escrito {OUT} — {len(courses)} aplicaciones del test, {len(competencias)} filas de competencia, {len(items)} items.")
 
 
 if __name__ == "__main__":
