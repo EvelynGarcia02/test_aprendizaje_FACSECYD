@@ -1,5 +1,5 @@
 """
-Regenera dashboard/js/data.js a partir de informe_test_aprendizaje.xlsx.
+Regenera js/data.js a partir de informe_test_aprendizaje.xlsx.
 
 Uso:
     python scripts/extract_data.py
@@ -19,7 +19,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 XLS = ROOT / "informe_test_aprendizaje.xlsx"
-OUT = ROOT / "dashboard" / "js" / "data.js"
+OUT = ROOT / "js" / "data.js"
 
 
 def main():
