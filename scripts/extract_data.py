@@ -13,6 +13,7 @@ carga directamente (sin fetch, para que funcione abriendo index.html sin
 necesidad de un servidor local).
 """
 import json
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -20,6 +21,13 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 XLS = ROOT / "data" / "informe_test_aprendizaje.xlsx"
 OUT = ROOT / "js" / "data.js"
+
+
+def r1(x):
+    """Redondea a 1 decimal con 'mitad hacia arriba' (como Excel), evitando
+    el error de punto flotante de round() built-in (ej. round(64.35, 1) == 64.3
+    porque 64.35 no es representable exacto en binario)."""
+    return float(Decimal(str(float(x))).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def main():
@@ -48,17 +56,17 @@ def main():
             "modalidad": r["modalidad_nombre"],
             "ta": int(r["nro_test"]),
             "n": int(r["n_estudiantes_unicos"]),
-            "prom": round(float(r["promedio_global"]), 1),
-            "mediana": round(float(r["mediana_global"]), 1),
-            "min": round(float(r["minimo_global"]), 1),
-            "max": round(float(r["maximo_global"]), 1),
-            "sd": round(float(r["sd_global"]), 1),
+            "prom": r1(r["promedio_global"]),
+            "mediana": r1(r["mediana_global"]),
+            "min": r1(r["minimo_global"]),
+            "max": r1(r["maximo_global"]),
+            "sd": r1(r["sd_global"]),
             "nivel": r["nivel_global"],
             "pct": {
-                "insuf": round(float(r["pct_insuficiente"]), 1),
-                "ed": round(float(r["pct_en_desarrollo"]), 1),
-                "sat": round(float(r["pct_satisfactorio"]), 1),
-                "sob": round(float(r["pct_sobresaliente"]), 1),
+                "insuf": r1(r["pct_insuficiente"]),
+                "ed": r1(r["pct_en_desarrollo"]),
+                "sat": r1(r["pct_satisfactorio"]),
+                "sob": r1(r["pct_sobresaliente"]),
             },
             "counts": {
                 "insuf": cnt("Insuf"),
@@ -76,13 +84,13 @@ def main():
             "competencia": r["competencia"],
             "tipo": "Específica" if r["competencia"].startswith("CE") else "Transversal",
             "n_items": int(nitems.get(key, 0)),
-            "prom": round(float(r["promedio_logro"]), 1),
+            "prom": r1(r["promedio_logro"]),
             "nivel": r["nivel_cohorte"],
             "pct": {
-                "insuf": round(float(r["pct_insuficiente"]), 1),
-                "ed": round(float(r["pct_en_desarrollo"]), 1),
-                "sat": round(float(r["pct_satisfactorio"]), 1),
-                "sob": round(float(r["pct_sobresaliente"]), 1),
+                "insuf": r1(r["pct_insuficiente"]),
+                "ed": r1(r["pct_en_desarrollo"]),
+                "sat": r1(r["pct_satisfactorio"]),
+                "sob": r1(r["pct_sobresaliente"]),
             },
         })
 
@@ -91,7 +99,7 @@ def main():
         items.append({
             "curso_id": r["nombre_test"],
             "codigo": r["codigo_item"],
-            "pct": round(float(r["pct_aciertos"]), 1),
+            "pct": r1(r["pct_aciertos"]),
             "competencias": r["competencias_evaluadas"],
         })
 

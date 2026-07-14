@@ -45,9 +45,9 @@ DATA.courses.forEach(c=>{
 const programList = Object.values(programs).sort((a,b)=> (b.ta2? b.ta2.n:0)+(b.ta1?b.ta1.n:0) - ((a.ta2?a.ta2.n:0)+(a.ta1?a.ta1.n:0)) );
 
 const compByCourse = {};
-DATA.competencias.forEach(r=>{ (compByCourse[r.curso_id] ||= []).push(r); });
+DATA.competencias.forEach(r=>{ if(!compByCourse[r.curso_id]) compByCourse[r.curso_id] = []; compByCourse[r.curso_id].push(r); });
 const itemsByCourse = {};
-DATA.items.forEach(r=>{ (itemsByCourse[r.curso_id] ||= []).push(r); });
+DATA.items.forEach(r=>{ if(!itemsByCourse[r.curso_id]) itemsByCourse[r.curso_id] = []; itemsByCourse[r.curso_id].push(r); });
 
 /* ---------- institutional KPIs ---------- */
 function weighted(courses, key){

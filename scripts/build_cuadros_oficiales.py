@@ -8,12 +8,21 @@ Uso:
 
 Requiere: pandas, openpyxl
 """
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+
+
+def r1(x):
+    """Redondea a 1 decimal con 'mitad hacia arriba' (como Excel), evitando
+    el error de punto flotante de round() built-in (ej. round(64.35, 1) == 64.3
+    porque 64.35 no es representable exacto en binario)."""
+    return float(Decimal(str(float(x))).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
 
 ROOT = Path(__file__).resolve().parent.parent
 XLS = ROOT / "data" / "informe_test_aprendizaje.xlsx"
@@ -126,11 +135,11 @@ def main():
             set_row(ws, r, ["Promedio %", "Nivel", "Mediana %", "Mínimo %", "Máximo %", "Desv.",
                              "% Insuf.", "% En des.", "% Satisf./Sobres."], FONT_HEADER, FILL_HEADER)
             r += 1
-            pct_sat, pct_sob = round(float(row["pct_satisfactorio"]), 1), round(float(row["pct_sobresaliente"]), 1)
+            pct_sat, pct_sob = r1(row["pct_satisfactorio"]), r1(row["pct_sobresaliente"])
             set_row(ws, r, [
-                round(float(row["promedio_global"]), 1), row["nivel_global"], round(float(row["mediana_global"]), 1),
-                round(float(row["minimo_global"]), 1), round(float(row["maximo_global"]), 1), round(float(row["sd_global"]), 1),
-                round(float(row["pct_insuficiente"]), 1), round(float(row["pct_en_desarrollo"]), 1), f"{pct_sat} / {pct_sob}",
+                r1(row["promedio_global"]), row["nivel_global"], r1(row["mediana_global"]),
+                r1(row["minimo_global"]), r1(row["maximo_global"]), r1(row["sd_global"]),
+                r1(row["pct_insuficiente"]), r1(row["pct_en_desarrollo"]), f"{pct_sat} / {pct_sob}",
             ], FONT_BODY, FILL_NONE)
             r += 1
 
@@ -168,9 +177,9 @@ def main():
                 tipo = "Específica" if code.startswith("CE") else "Transversal"
                 n_it = int(nitems.get((nt, code), 0))
                 set_row(ws, r, [
-                    code, tipo, n_it, round(float(crow["promedio_logro"]), 1), crow["nivel_cohorte"],
-                    round(float(crow["pct_insuficiente"]), 1), round(float(crow["pct_en_desarrollo"]), 1),
-                    round(float(crow["pct_satisfactorio"]), 1), round(float(crow["pct_sobresaliente"]), 1),
+                    code, tipo, n_it, r1(crow["promedio_logro"]), crow["nivel_cohorte"],
+                    r1(crow["pct_insuficiente"]), r1(crow["pct_en_desarrollo"]),
+                    r1(crow["pct_satisfactorio"]), r1(crow["pct_sobresaliente"]),
                 ], FONT_BODY, fill)
                 ws.cell(row=r, column=1).font = FONT_BODY_BOLD
                 r += 1
@@ -198,7 +207,7 @@ def main():
                     comp_cell.alignment = LEFT
                     for c in range(3, 9):
                         ws.cell(row=r, column=c).fill = fill
-                    val_cell = ws.cell(row=r, column=9, value=round(float(irow["pct_aciertos"]), 1))
+                    val_cell = ws.cell(row=r, column=9, value=r1(irow["pct_aciertos"]))
                     val_cell.font = FONT_CRITICAL
                     val_cell.fill = fill
                     val_cell.alignment = CENTER
