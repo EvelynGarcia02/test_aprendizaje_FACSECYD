@@ -38,7 +38,3 @@ Si el enlace todavía no carga, falta activar GitHub Pages una sola vez (ver aba
 2. Instala dependencias una vez: `pip install pandas openpyxl`
 3. Corre: `python scripts/extract_data.py`
 4. Esto regenera `js/data.js`. Recarga `index.html` en el navegador para ver los cambios.
-
-## Nota sobre Economía (Presencial)
-
-Este programa no estaba incluido en `Cuadros_oficiales_por_carrera.xlsx` original (le faltaba esa hoja). Se calculó directamente desde `informe_test_aprendizaje.xlsx` con la misma metodología y aparece marcado con un aviso dentro del dashboard.
