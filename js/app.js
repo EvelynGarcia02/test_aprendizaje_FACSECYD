@@ -55,13 +55,14 @@ function weighted(courses, key){
   return sw? s/sw : 0;
 }
 const totalN = DATA.courses.reduce((a,c)=>a+c.n,0);
-const totalSatSob = DATA.courses.reduce((a,c)=>a+c.counts.sat+c.counts.sob,0);
-const promInst = weighted(DATA.courses,'prom');
 const ta1Courses = DATA.courses.filter(c=>c.ta===1);
 const ta2Courses = DATA.courses.filter(c=>c.ta===2);
+const totalN1 = ta1Courses.reduce((a,c)=>a+c.n,0);
+const totalN2 = ta2Courses.reduce((a,c)=>a+c.n,0);
+const satSob1 = ta1Courses.reduce((a,c)=>a+c.counts.sat+c.counts.sob,0);
+const satSob2 = ta2Courses.reduce((a,c)=>a+c.counts.sat+c.counts.sob,0);
 const promTA1 = weighted(ta1Courses,'prom');
 const promTA2 = weighted(ta2Courses,'prom');
-const deltaInst = promTA2 - promTA1;
 
 /* ================= GLOBAL VIEW ================= */
 const gView = document.getElementById('view-global');
@@ -82,55 +83,40 @@ function kpiRow(items){
   return row;
 }
 
-const carreraCount = new Set(DATA.courses.map(c=>c.carrera)).size;
-const programCount = programList.length;
+const carreraCount = programList.length;
 
 gView.appendChild(kpiRow([
-  {label:'Evaluaciones aplicadas (TA1+TA2)', value: totalN.toLocaleString('es-EC'), sub: DATA.courses.length+' aplicaciones del test · '+carreraCount+' carreras · '+programCount+' programas'},
-  {label:'Promedio institucional', value: fmt1(promInst)+'%'},
-  {label:'% Satisfactorio o superior', value: fmt1(totalSatSob/totalN*100)+'%', sub: totalSatSob.toLocaleString('es-EC')+' de '+totalN.toLocaleString('es-EC')+' evaluaciones'},
-  {label:'Variación institucional TA1 → TA2', value:(deltaInst>=0?'+':'')+fmt1(deltaInst)+' pts',
-    delta:(deltaInst>=0?'▲ mejora':'▼ retrocede')+' vs. TA1 ('+fmt1(promTA1)+'% → '+fmt1(promTA2)+'%)', deltaGood: deltaInst>=0},
+  {label:'Evaluaciones aplicadas (TA1+TA2)', value: totalN.toLocaleString('es-EC'), sub: DATA.courses.length+' aplicaciones del test · '+carreraCount+' carreras'},
+  {label:'Promedio TA1', value: fmt1(promTA1)+'%', sub: totalN1.toLocaleString('es-EC')+' estudiantes evaluados'},
+  {label:'Promedio TA2', value: fmt1(promTA2)+'%', sub: totalN2.toLocaleString('es-EC')+' estudiantes evaluados'},
+  {label:'% Satisfactorio o superior — TA1', value: fmt1(satSob1/totalN1*100)+'%'},
+  {label:'% Satisfactorio o superior — TA2', value: fmt1(satSob2/totalN2*100)+'%'},
 ]));
 
-/* --- dumbbell: progreso por programa --- */
-const dCard = el('div',{class:'card'});
-dCard.appendChild(el('h2',null,'Progreso por programa: TA1 → TA2'));
-dCard.appendChild(el('p',{class:'caption'},'Promedio global de los estudiantes evaluados en cada ronda. Programas ordenados por resultado más reciente (TA2). Clic en un programa para ver su detalle.'));
-dCard.appendChild(el('div',{class:'legend'},[
-  el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
-  el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'TA2']),
-]));
-const dumbbellSorted = programList.slice().sort((a,b)=> (b.ta2?b.ta2.prom:0) - (a.ta2?a.ta2.prom:0));
-dumbbellSorted.forEach(p=>{
-  const v1 = p.ta1? p.ta1.prom : null, v2 = p.ta2? p.ta2.prom : null;
-  const row = el('div',{class:'dumbbell-row clickable', onclick:()=>goToProgram(p)});
-  row.appendChild(el('div',{class:'dumbbell-label'}, p.label));
-  const track = el('div',{class:'dumbbell-track'});
-  track.appendChild(el('div',{class:'baseline'}));
-  if(v1!=null && v2!=null){
-    const lo = Math.min(v1,v2), hi = Math.max(v1,v2);
-    track.appendChild(el('div',{class:'connector', style:`left:${lo}%;width:${hi-lo}%`}));
-  }
-  if(v1!=null){
-    const dot1 = el('div',{class:'dot ta1', style:`left:${v1}%`});
-    attachTip(dot1, p.label+' — TA1: '+fmt1(v1)+'% ('+p.ta1.n+' estudiantes)');
-    track.appendChild(dot1);
-  }
-  if(v2!=null){
-    const dot2 = el('div',{class:'dot ta2', style:`left:${v2}%`});
-    attachTip(dot2, p.label+' — TA2: '+fmt1(v2)+'% ('+p.ta2.n+' estudiantes)');
-    track.appendChild(dot2);
-  }
-  row.appendChild(track);
-  let deltaTxt = '—', cls='';
-  if(v1!=null && v2!=null){ const d=v2-v1; deltaTxt=(d>=0?'+':'')+fmt1(d)+' pts'; cls = d>=0?'good':'bad'; }
-  const dl = el('div',{class:'dumbbell-delta '+cls}, deltaTxt);
-  dl.style.color = cls==='good'?'var(--good-text)':(cls==='bad'?'var(--bad-text)':'var(--text-muted)');
-  row.appendChild(dl);
-  dCard.appendChild(row);
-});
-gView.appendChild(dCard);
+/* --- resultado por programa, TA1 y TA2 como paneles independientes --- */
+function rankCard(title, taKey){
+  const card = el('div',{class:'card'});
+  card.appendChild(el('h2',null,title));
+  card.appendChild(el('p',{class:'caption'},'Promedio global de los estudiantes evaluados en esta ronda. Clic en un programa para ver su detalle.'));
+  const list = programList.filter(p=>p[taKey]).slice().sort((a,b)=> b[taKey].prom - a[taKey].prom);
+  list.forEach(p=>{
+    const c = p[taKey];
+    const row = el('div',{class:'hbar-row clickable', onclick:()=>goToProgram(p)});
+    row.appendChild(el('div',{class:'hlabel'},[el('b',null,p.label)]));
+    const track = el('div',{class:'hbar-track'});
+    const fill = el('div',{class:'hbar-fill', style:`width:${c.prom}%;background:var(--series-1)`});
+    track.appendChild(fill);
+    row.appendChild(track);
+    row.appendChild(el('div',{class:'hval'}, fmt1(c.prom)+'%'));
+    attachTip(row, p.label+' — '+fmt1(c.prom)+'% ('+c.n+' estudiantes)');
+    card.appendChild(row);
+  });
+  return card;
+}
+const rankGrid = el('div',{class:'grid-2'});
+rankGrid.appendChild(rankCard('Resultado por programa — TA1', 'ta1'));
+rankGrid.appendChild(rankCard('Resultado por programa — TA2', 'ta2'));
+gView.appendChild(rankGrid);
 
 /* --- stacked 100% bar: distribución de niveles por programa --- */
 const sCard = el('div',{class:'card'});
@@ -278,20 +264,17 @@ function renderCarrera(){
   }
 
   const v1 = p.ta1, v2 = p.ta2;
-  const delta = (v1&&v2)? v2.prom - v1.prom : null;
   carreraBody.appendChild(kpiRow([
     {label:'Estudiantes TA1', value: v1? v1.n : '—'},
     {label:'Estudiantes TA2', value: v2? v2.n : '—'},
     {label:'Promedio TA1', value: v1? fmt1(v1.prom)+'%':'—', sub: v1? v1.nivel: ''},
     {label:'Promedio TA2', value: v2? fmt1(v2.prom)+'%':'—', sub: v2? v2.nivel: ''},
-    {label:'Variación TA1 → TA2', value: delta!=null? (delta>=0?'+':'')+fmt1(delta)+' pts':'—',
-      delta: delta!=null? (delta>=0?'▲ mejora':'▼ retrocede'):null, deltaGood: delta!=null? delta>=0: true},
   ]));
 
   /* competencias grouped bars */
   const compCard = el('div',{class:'card'});
   compCard.appendChild(el('h2',null,'Logro por competencia'));
-  compCard.appendChild(el('p',{class:'caption'},'CE = competencia específica de la carrera · CT = competencia transversal. TA1 vs. TA2. Clic en una barra para filtrar los ítems críticos por esa competencia.'));
+  compCard.appendChild(el('p',{class:'caption'},'CE = competencia específica de la carrera · CT = competencia transversal. TA1 y TA2 mostrados por separado. Clic en una barra para filtrar los ítems críticos por esa competencia.'));
   compCard.appendChild(el('div',{class:'legend'},[
     el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
     el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'TA2']),
@@ -333,7 +316,7 @@ function renderCarrera(){
 
   /* stacked nivel TA1 vs TA2 */
   const sCard2 = el('div',{class:'card'});
-  sCard2.appendChild(el('h2',null,'Distribución de niveles: TA1 vs. TA2'));
+  sCard2.appendChild(el('h2',null,'Distribución de niveles: TA1 y TA2'));
   sCard2.appendChild(el('p',{class:'caption'},'Clic en la leyenda para aislar un nivel.'));
   const carreraLegend = el('div',{class:'legend'});
   ['insuf','ed','sat','sob'].forEach(k=>{
@@ -406,4 +389,4 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 });
 
 /* ---------- data notice ---------- */
-document.getElementById('dataNotice').textContent = 'Nota: se incluyen '+DATA.courses.length+' aplicaciones del test (TA1+TA2) de '+carreraCount+' carreras ('+programCount+' programas contando modalidad presencial/en línea por separado). El programa "Economía (Presencial)" se reconstruyó desde informe_test_aprendizaje.xlsx porque no figuraba en Cuadros_oficiales_por_carrera.xlsx.';
+document.getElementById('dataNotice').textContent = 'Nota: se incluyen '+DATA.courses.length+' aplicaciones del test (TA1+TA2) de '+carreraCount+' carreras. La carrera "Economía (Presencial)" no estaba incluida en Cuadros_oficiales_por_carrera.xlsx y se reconstruyó desde informe_test_aprendizaje.xlsx con la misma metodología.';
