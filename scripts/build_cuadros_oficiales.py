@@ -175,14 +175,14 @@ def main():
                 r += 1
             r += 1
 
-            section(ws, r, "Ítems críticos (<40% de aciertos)")
+            section(ws, r, "Ítems críticos (<50% de aciertos, nivel Insuficiente)")
             r += 1
-            crit = ai[(ai["nombre_test"] == nt) & (ai["pct_aciertos"] < 40)].sort_values("pct_aciertos")
+            crit = ai[(ai["nombre_test"] == nt) & (ai["pct_aciertos"] < 50)].sort_values("pct_aciertos")
             set_row(ws, r, ["Código", "Competencias", "", "", "", "", "", "", "% Aciertos"], FONT_HEADER, FILL_HEADER)
             ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=8)
             r += 1
             if crit.empty:
-                ws.cell(row=r, column=1, value="Ninguno (ningún ítem por debajo del 40%).").font = FONT_BODY
+                ws.cell(row=r, column=1, value="Ninguno (ningún ítem por debajo del 50%).").font = FONT_BODY
                 r += 1
             else:
                 for i, (_, irow) in enumerate(crit.iterrows()):

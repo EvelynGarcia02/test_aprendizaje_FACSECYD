@@ -3,6 +3,7 @@
 /* ---------- helpers ---------- */
 const NIVEL_COLOR = {insuf:'var(--nivel-insuf)', ed:'var(--nivel-ed)', sat:'var(--nivel-sat)', sob:'var(--nivel-sob)'};
 const NIVEL_LABEL = {insuf:'Insuficiente', ed:'En desarrollo', sat:'Satisfactorio', sob:'Sobresaliente'};
+function nivelBand(pct){ return pct<50 ? 'insuf' : pct<70 ? 'ed' : pct<90 ? 'sat' : 'sob'; }
 function el(tag, attrs, children){
   const e = document.createElement(tag);
   if(attrs) for(const k in attrs){
@@ -176,10 +177,9 @@ DATA.competencias.forEach(r=>{ (r.competencia.startsWith('CE')?ceCT.CE:ceCT.CT).
 const avgCE = ceCT.CE.reduce((a,b)=>a+b,0)/ceCT.CE.length;
 const avgCT = ceCT.CT.reduce((a,b)=>a+b,0)/ceCT.CT.length;
 
-/* --- top items criticos institucional --- */
-const critItems = DATA.items.filter(i=>i.pct<40).sort((a,b)=>a.pct-b.pct).slice(0,10);
-
-const grid2 = el('div',{class:'grid-2'});
+/* --- items institucionales: peores y mejores --- */
+const worstItems = DATA.items.filter(i=>i.pct<50).sort((a,b)=>a.pct-b.pct).slice(0,10);
+const bestItems = DATA.items.slice().sort((a,b)=>b.pct-a.pct).slice(0,10);
 
 const ceCard = el('div',{class:'card'});
 ceCard.appendChild(el('h2',null,'Competencias específicas vs. transversales'));
@@ -194,27 +194,42 @@ ceCard.appendChild(el('p',{class:'caption'},'Promedio de logro institucional, to
   row.appendChild(el('div',{class:'hval'}, fmt1(val)+'%'));
   ceCard.appendChild(row);
 });
-grid2.appendChild(ceCard);
+gView.appendChild(ceCard);
 
-const critCard = el('div',{class:'card'});
-critCard.appendChild(el('h2',null,'Ítems críticos institucionales'));
-critCard.appendChild(el('p',{class:'caption'},'Preguntas con menor % de aciertos en toda la institución (< 40%).'));
-if(critItems.length===0){
-  critCard.appendChild(el('div',{class:'empty-note'},'Ningún ítem por debajo del 40% a nivel institucional.'));
-} else {
-  critItems.forEach(it=>{
-    const course = DATA.courses.find(c=>c.id===it.curso_id);
-    const row = el('div',{class:'hbar-row'});
-    row.appendChild(el('div',{class:'hlabel'},[el('b',null,it.codigo),' · '+(course?course.carrera:'')+' · '+it.competencias]));
-    const track = el('div',{class:'hbar-track'});
-    const fill = el('div',{class:'hbar-fill', style:`width:${it.pct}%;background:var(--nivel-insuf)`});
-    track.appendChild(fill);
-    row.appendChild(track);
-    row.appendChild(el('div',{class:'hval'}, fmt1(it.pct)+'%'));
-    critCard.appendChild(row);
-  });
+function itemListCard(title, caption, items, emptyMsg){
+  const card = el('div',{class:'card'});
+  card.appendChild(el('h2',null,title));
+  card.appendChild(el('p',{class:'caption'},caption));
+  if(items.length===0){
+    card.appendChild(el('div',{class:'empty-note'},emptyMsg));
+  } else {
+    items.forEach(it=>{
+      const course = DATA.courses.find(c=>c.id===it.curso_id);
+      const band = nivelBand(it.pct);
+      const row = el('div',{class:'hbar-row'});
+      row.appendChild(el('div',{class:'hlabel'},[el('b',null,it.codigo),' · '+(course?course.carrera:'')+' · '+it.competencias]));
+      const track = el('div',{class:'hbar-track'});
+      const fill = el('div',{class:'hbar-fill', style:`width:${it.pct}%;background:${NIVEL_COLOR[band]}`});
+      track.appendChild(fill);
+      row.appendChild(track);
+      row.appendChild(el('div',{class:'hval'}, fmt1(it.pct)+'%'));
+      card.appendChild(row);
+    });
+  }
+  return card;
 }
-grid2.appendChild(critCard);
+
+const grid2 = el('div',{class:'grid-2'});
+grid2.appendChild(itemListCard(
+  'Ítems con menor % de aciertos (institucional)',
+  'Preguntas en nivel Insuficiente (< 50%) en toda la institución.',
+  worstItems, 'Ningún ítem por debajo del 50% a nivel institucional.'
+));
+grid2.appendChild(itemListCard(
+  'Ítems con mayor % de aciertos (institucional)',
+  'Las 10 preguntas con más aciertos en toda la institución.',
+  bestItems, 'Sin datos.'
+));
 gView.appendChild(grid2);
 
 /* ================= POR CARRERA VIEW ================= */
@@ -227,6 +242,7 @@ cView.appendChild(carreraBody);
 let activeProgram = programList[0];
 let carreraCompFilter = null;
 let carreraHiddenLevels = new Set();
+let itemViewMode = 'insuf';
 const selBtns = [];
 programList.forEach(p=>{
   const totalN2 = (p.ta1?p.ta1.n:0)+(p.ta2?p.ta2.n:0);
@@ -314,6 +330,41 @@ function renderCarrera(){
   compCard.appendChild(axis);
   carreraBody.appendChild(compCard);
 
+  /* mapa de calor competencia x nivel */
+  function heatmapCard(title, list){
+    const card = el('div',{class:'card'});
+    card.appendChild(el('h2',null,title));
+    card.appendChild(el('p',{class:'caption'},'% de estudiantes en cada nivel, por competencia.'));
+    const scale = el('div',{class:'heat-scale'});
+    scale.appendChild(el('span',null,'0%'));
+    scale.appendChild(el('div',{class:'heat-scale-bar'}));
+    scale.appendChild(el('span',null,'100%'));
+    card.appendChild(scale);
+    const ordered = COMP_ORDER.filter(code=>list.some(r=>r.competencia===code)).map(code=>list.find(r=>r.competencia===code));
+    if(!ordered.length){
+      card.appendChild(el('div',{class:'empty-note'},'Sin datos para esta ronda.'));
+      return card;
+    }
+    const table = el('table',{class:'datatable heatmap'});
+    table.appendChild(el('tr',null,[el('th',null,''), el('th',null,'Insuf.'), el('th',null,'En des.'), el('th',null,'Satisf.'), el('th',null,'Sobres.')]));
+    ordered.forEach(r=>{
+      const cells = ['insuf','ed','sat','sob'].map(k=>{
+        const pct = r.pct[k];
+        const textColor = pct>=50 ? '#fff' : 'var(--text-primary)';
+        const td = el('td',{class:'heat-cell', style:`background:color-mix(in srgb, var(--series-1) ${pct}%, var(--surface-1));color:${textColor}`}, fmt1(pct)+'%');
+        attachTip(td, r.competencia+' — '+NIVEL_LABEL[k]+': '+fmt1(pct)+'%');
+        return td;
+      });
+      table.appendChild(el('tr',null,[el('td',null,el('b',null,r.competencia)), ...cells]));
+    });
+    card.appendChild(table);
+    return card;
+  }
+  const heatGrid = el('div',{class:'grid-2'});
+  heatGrid.appendChild(heatmapCard('Mapa de calor — TA1', c1list));
+  heatGrid.appendChild(heatmapCard('Mapa de calor — TA2', c2list));
+  carreraBody.appendChild(heatGrid);
+
   /* stacked nivel TA1 vs TA2 */
   const sCard2 = el('div',{class:'card'});
   sCard2.appendChild(el('h2',null,'Distribución de niveles: TA1 y TA2'));
@@ -347,12 +398,20 @@ function renderCarrera(){
   });
   carreraBody.appendChild(sCard2);
 
-  /* items criticos table */
+  /* resultados por item */
   const itCard = el('div',{class:'card'});
-  itCard.appendChild(el('h2',null,'Ítems críticos (< 40% de aciertos)'));
+  itCard.appendChild(el('h2',null,'Resultados por ítem'));
+  itCard.appendChild(el('p',{class:'caption'},'% de aciertos de cada pregunta del test, TA1 y TA2. Umbral de alerta: nivel Insuficiente (< 50%).'));
+  const itemToggle = el('div',{class:'stack-toggle'});
+  const btnInsuf = el('button',{class:'pill'+(itemViewMode==='insuf'?' active':''), onclick:()=>{itemViewMode='insuf';renderCarrera();}},'Solo insuficientes (<50%)');
+  const btnAllItems = el('button',{class:'pill'+(itemViewMode==='all'?' active':''), onclick:()=>{itemViewMode='all';renderCarrera();}},'Todos los ítems');
+  itemToggle.appendChild(btnInsuf); itemToggle.appendChild(btnAllItems);
+  itCard.appendChild(itemToggle);
+
   let rows = [];
-  if(v1) (itemsByCourse[v1.id]||[]).filter(i=>i.pct<40).forEach(i=>rows.push({...i,ronda:'TA1'}));
-  if(v2) (itemsByCourse[v2.id]||[]).filter(i=>i.pct<40).forEach(i=>rows.push({...i,ronda:'TA2'}));
+  if(v1) (itemsByCourse[v1.id]||[]).forEach(i=>rows.push({...i,ronda:'TA1'}));
+  if(v2) (itemsByCourse[v2.id]||[]).forEach(i=>rows.push({...i,ronda:'TA2'}));
+  if(itemViewMode==='insuf') rows = rows.filter(r=>r.pct<50);
   rows.sort((a,b)=>a.pct-b.pct);
   if(carreraCompFilter){
     rows = rows.filter(r=> r.competencias.includes(carreraCompFilter));
@@ -361,15 +420,19 @@ function renderCarrera(){
     itCard.appendChild(chip);
   }
   if(rows.length===0){
-    itCard.appendChild(el('div',{class:'empty-note'}, carreraCompFilter? 'Ningún ítem crítico para '+carreraCompFilter+' en este programa.' : 'Ninguno. Todos los ítems superan el 40% de aciertos en este programa.'));
+    const msg = carreraCompFilter
+      ? 'Ningún ítem de '+carreraCompFilter+(itemViewMode==='insuf'?' en nivel Insuficiente':'')+' en este programa.'
+      : (itemViewMode==='insuf' ? 'Ninguno. Todos los ítems superan el 50% de aciertos en este programa.' : 'Sin datos.');
+    itCard.appendChild(el('div',{class:'empty-note'}, msg));
   } else {
     const table = el('table',{class:'datatable'});
     const thead = el('tr',null,[el('th',null,'Ronda'),el('th',null,'Código'),el('th',null,'Competencias'),el('th',null,'% Aciertos')]);
     table.appendChild(thead);
     rows.forEach(r=>{
+      const band = nivelBand(r.pct);
       table.appendChild(el('tr',null,[
         el('td',null,r.ronda), el('td',null,r.codigo), el('td',null,r.competencias),
-        el('td',null, el('span',{class:'tag', style:'background:var(--nivel-insuf)'}, fmt1(r.pct)+'%'))
+        el('td',null, el('span',{class:'tag '+band, style:`background:${NIVEL_COLOR[band]}`}, fmt1(r.pct)+'%'))
       ]));
     });
     itCard.appendChild(table);
