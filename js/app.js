@@ -444,7 +444,8 @@ function renderCarrera(){
   const itemToggle = el('div',{class:'stack-toggle'});
   const btnAllItems = el('button',{class:'pill'+(carreraNivelFilter?'':' active'), onclick:()=>{carreraNivelFilter=null;renderCarrera();}},'Todos los ítems');
   const btnInsuf = el('button',{class:'pill'+(carreraNivelFilter==='insuf'?' active':''), onclick:()=>{carreraNivelFilter = carreraNivelFilter==='insuf'?null:'insuf'; renderCarrera();}},'Solo insuficientes (<50%)');
-  itemToggle.appendChild(btnAllItems); itemToggle.appendChild(btnInsuf);
+  const btnSob = el('button',{class:'pill'+(carreraNivelFilter==='sob'?' active':''), onclick:()=>{carreraNivelFilter = carreraNivelFilter==='sob'?null:'sob'; renderCarrera();}},'Solo sobresalientes (>89%)');
+  itemToggle.appendChild(btnAllItems); itemToggle.appendChild(btnInsuf); itemToggle.appendChild(btnSob);
   itCard.appendChild(itemToggle);
 
   let rows = [];
