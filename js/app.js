@@ -289,12 +289,75 @@ function renderCarrera(){
   }
 
   const v1 = p.ta1, v2 = p.ta2;
+  const c1list = compByCourse[v1?v1.id:''] || [];
+  const c2list = compByCourse[v2?v2.id:''] || [];
   carreraBody.appendChild(kpiRow([
     {label:'Estudiantes TA1', value: v1? v1.n : '—'},
     {label:'Estudiantes TA2', value: v2? v2.n : '—'},
     {label:'Promedio TA1', value: v1? fmt1(v1.prom)+'%':'—', sub: v1? v1.nivel: ''},
     {label:'Promedio TA2', value: v2? fmt1(v2.prom)+'%':'—', sub: v2? v2.nivel: ''},
   ]));
+
+  /* stacked nivel TA1 vs TA2 */
+  const sCard2 = el('div',{class:'card'});
+  sCard2.appendChild(el('h2',null,'Distribución de niveles: TA1 y TA2'));
+  sCard2.appendChild(el('p',{class:'caption'},'Clic en la leyenda para aislar un nivel.'));
+  const carreraLegend = el('div',{class:'legend'});
+  ['insuf','ed','sat','sob'].forEach(k=>{
+    const item = el('div',{class:'legend-item toggle'+(carreraHiddenLevels.has(k)?' off':'')},[el('span',{class:'swatch',style:`background:${NIVEL_COLOR[k]}`}), NIVEL_LABEL[k]]);
+    item.addEventListener('click', ()=>{
+      if(carreraHiddenLevels.has(k)) carreraHiddenLevels.delete(k); else carreraHiddenLevels.add(k);
+      renderCarrera();
+    });
+    carreraLegend.appendChild(item);
+  });
+  sCard2.appendChild(carreraLegend);
+  [['TA1',v1],['TA2',v2]].forEach(([lbl,c])=>{
+    const row = el('div',{class:'stack-row'});
+    row.appendChild(el('div',{class:'stack-label'}, lbl));
+    const bar = el('div',{class:'stack-bar'});
+    if(c){
+      ['insuf','ed','sat','sob'].forEach(k=>{
+        const pct = c.pct[k];
+        if(pct<=0) return;
+        const seg = el('div',{class:'stack-seg', style:`width:${pct}%;background:${NIVEL_COLOR[k]};opacity:${carreraHiddenLevels.has(k)?0.15:1}`});
+        attachTip(seg, NIVEL_LABEL[k]+': '+fmt1(pct)+'% ('+c.counts[k]+' est.)');
+        bar.appendChild(seg);
+      });
+    }
+    row.appendChild(bar);
+    row.appendChild(el('div',{class:'stack-n'}, c? 'n = '+c.n : 'sin datos'));
+    sCard2.appendChild(row);
+  });
+  carreraBody.appendChild(sCard2);
+
+  /* CE vs CT summary for this carrera */
+  function avgByPrefix(list, prefix){
+    const vals = list.filter(r=>r.competencia.startsWith(prefix)).map(r=>r.prom);
+    return vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+  }
+  const ceCard2 = el('div',{class:'card'});
+  ceCard2.appendChild(el('h2',null,'Competencias específicas vs. transversales'));
+  ceCard2.appendChild(el('p',{class:'caption'},'Promedio de logro en esta carrera. TA1 y TA2 mostrados por separado.'));
+  ceCard2.appendChild(el('div',{class:'legend'},[
+    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
+    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'TA2']),
+  ]));
+  [['Específicas (CE)','CE'], ['Transversales (CT)','CT']].forEach(([label,prefix])=>{
+    [['TA1',avgByPrefix(c1list,prefix),.42],['TA2',avgByPrefix(c2list,prefix),1]].forEach(([lbl,val,op])=>{
+      if(val==null) return;
+      const row = el('div',{class:'hbar-row', style:'grid-template-columns:130px 1fr 46px'});
+      row.appendChild(el('div',{class:'hlabel'},[el('b',null,label),' · '+lbl]));
+      const track = el('div',{class:'hbar-track'});
+      const fill = el('div',{class:'hbar-fill', style:`width:${val}%;background:var(--series-1);opacity:${op}`});
+      track.appendChild(fill);
+      row.appendChild(track);
+      row.appendChild(el('div',{class:'hval'}, fmt1(val)+'%'));
+      attachTip(row, label+' '+lbl+': '+fmt1(val)+'% de logro promedio');
+      ceCard2.appendChild(row);
+    });
+  });
+  carreraBody.appendChild(ceCard2);
 
   /* competencias grouped bars */
   const compCard = el('div',{class:'card'});
@@ -304,8 +367,6 @@ function renderCarrera(){
     el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
     el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'TA2']),
   ]));
-  const c1list = compByCourse[v1?v1.id:''] || [];
-  const c2list = compByCourse[v2?v2.id:''] || [];
   const codes = COMP_ORDER.filter(code => c1list.some(r=>r.competencia===code) || c2list.some(r=>r.competencia===code));
   const gwrap = el('div',{class:'gbar-wrap'});
   function toggleCompFilter(code){
@@ -380,39 +441,6 @@ function renderCarrera(){
   heatGrid.appendChild(heatmapCard('Mapa de calor — TA1', c1list));
   heatGrid.appendChild(heatmapCard('Mapa de calor — TA2', c2list));
   carreraBody.appendChild(heatGrid);
-
-  /* stacked nivel TA1 vs TA2 */
-  const sCard2 = el('div',{class:'card'});
-  sCard2.appendChild(el('h2',null,'Distribución de niveles: TA1 y TA2'));
-  sCard2.appendChild(el('p',{class:'caption'},'Clic en la leyenda para aislar un nivel.'));
-  const carreraLegend = el('div',{class:'legend'});
-  ['insuf','ed','sat','sob'].forEach(k=>{
-    const item = el('div',{class:'legend-item toggle'+(carreraHiddenLevels.has(k)?' off':'')},[el('span',{class:'swatch',style:`background:${NIVEL_COLOR[k]}`}), NIVEL_LABEL[k]]);
-    item.addEventListener('click', ()=>{
-      if(carreraHiddenLevels.has(k)) carreraHiddenLevels.delete(k); else carreraHiddenLevels.add(k);
-      renderCarrera();
-    });
-    carreraLegend.appendChild(item);
-  });
-  sCard2.appendChild(carreraLegend);
-  [['TA1',v1],['TA2',v2]].forEach(([lbl,c])=>{
-    const row = el('div',{class:'stack-row'});
-    row.appendChild(el('div',{class:'stack-label'}, lbl));
-    const bar = el('div',{class:'stack-bar'});
-    if(c){
-      ['insuf','ed','sat','sob'].forEach(k=>{
-        const pct = c.pct[k];
-        if(pct<=0) return;
-        const seg = el('div',{class:'stack-seg', style:`width:${pct}%;background:${NIVEL_COLOR[k]};opacity:${carreraHiddenLevels.has(k)?0.15:1}`});
-        attachTip(seg, NIVEL_LABEL[k]+': '+fmt1(pct)+'% ('+c.counts[k]+' est.)');
-        bar.appendChild(seg);
-      });
-    }
-    row.appendChild(bar);
-    row.appendChild(el('div',{class:'stack-n'}, c? 'n = '+c.n : 'sin datos'));
-    sCard2.appendChild(row);
-  });
-  carreraBody.appendChild(sCard2);
 
   /* resultados por item */
   const itCard = el('div',{class:'card'});
