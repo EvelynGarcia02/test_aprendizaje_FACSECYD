@@ -282,11 +282,6 @@ const COMP_ORDER = ['CE1','CE2','CE3','CE4','CT1','CT2','CT3','CT4'];
 function renderCarrera(){
   carreraBody.innerHTML = '';
   const p = activeProgram;
-  const isReconstructed = (p.carrera==='Economía' && p.modalidad==='Presencial');
-
-  if(isReconstructed){
-    carreraBody.appendChild(el('div',{class:'notice'},'Este programa no estaba incluido en Cuadros_oficiales_por_carrera.xlsx (solo tenía 5 hojas, faltaba Economía Presencial). Los valores aquí se calcularon directamente desde informe_test_aprendizaje.xlsx con la misma metodología.'));
-  }
 
   const v1 = p.ta1, v2 = p.ta2;
   const c1list = compByCourse[v1?v1.id:''] || [];
