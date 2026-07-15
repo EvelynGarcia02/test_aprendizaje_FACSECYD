@@ -324,7 +324,6 @@ function renderCarrera(){
     row.appendChild(el('div',{class:'stack-n'}, c? 'n = '+c.n : 'sin datos'));
     sCard2.appendChild(row);
   });
-  carreraBody.appendChild(sCard2);
 
   /* CE vs CT summary for this carrera */
   function avgByPrefix(list, prefix){
@@ -352,7 +351,11 @@ function renderCarrera(){
       ceCard2.appendChild(row);
     });
   });
-  carreraBody.appendChild(ceCard2);
+
+  const nivelesCeGrid = el('div',{class:'grid-2'});
+  nivelesCeGrid.appendChild(sCard2);
+  nivelesCeGrid.appendChild(ceCard2);
+  carreraBody.appendChild(nivelesCeGrid);
 
   /* competencias grouped bars */
   const compCard = el('div',{class:'card'});
@@ -485,7 +488,9 @@ function renderCarrera(){
       ]);
       table.appendChild(tr);
     });
-    itCard.appendChild(table);
+    const tableScroll = el('div',{class:'table-scroll'});
+    tableScroll.appendChild(table);
+    itCard.appendChild(tableScroll);
   }
   carreraBody.appendChild(itCard);
 }
