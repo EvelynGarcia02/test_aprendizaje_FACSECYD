@@ -32,6 +32,7 @@ NAVY = "1F3864"
 LIGHT_BLUE = "DCE6F1"
 ZEBRA = "F2F2F2"
 RED = "C00000"
+BLUE = "2A78D6"
 GRAY = "595959"
 
 FONT_TITLE = Font(name="Arial", bold=True, size=13, color=NAVY)
@@ -42,6 +43,7 @@ FONT_HEADER = Font(name="Arial", bold=True, size=10, color="FFFFFF")
 FONT_BODY = Font(name="Arial", size=10, color="000000")
 FONT_BODY_BOLD = Font(name="Arial", bold=True, size=10, color="000000")
 FONT_CRITICAL = Font(name="Arial", bold=True, size=10, color=RED)
+FONT_OUTSTANDING = Font(name="Arial", bold=True, size=10, color=BLUE)
 
 FILL_BANNER = PatternFill("solid", fgColor=NAVY)
 FILL_SECTION = PatternFill("solid", fgColor=LIGHT_BLUE)
@@ -209,6 +211,37 @@ def main():
                         ws.cell(row=r, column=c).fill = fill
                     val_cell = ws.cell(row=r, column=9, value=r1(irow["pct_aciertos"]))
                     val_cell.font = FONT_CRITICAL
+                    val_cell.fill = fill
+                    val_cell.alignment = CENTER
+                    r += 1
+            r += 2
+
+            section(ws, r, "Ítems sobresalientes (≥90% de aciertos, nivel Sobresaliente)")
+            r += 1
+            outstanding = ai[(ai["nombre_test"] == nt) & (ai["pct_aciertos"] >= 90)].sort_values(
+                "pct_aciertos", ascending=False
+            )
+            set_row(ws, r, ["Código", "Competencias", "", "", "", "", "", "", "% Aciertos"], FONT_HEADER, FILL_HEADER)
+            ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=8)
+            r += 1
+            if outstanding.empty:
+                ws.cell(row=r, column=1, value="Ninguno (ningún ítem alcanza el 90%).").font = FONT_BODY
+                r += 1
+            else:
+                for i, (_, irow) in enumerate(outstanding.iterrows()):
+                    fill = FILL_ZEBRA if i % 2 == 1 else FILL_NONE
+                    ws.cell(row=r, column=1, value=irow["codigo_item"]).font = FONT_BODY
+                    ws.cell(row=r, column=1).fill = fill
+                    ws.cell(row=r, column=1).alignment = CENTER
+                    ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=8)
+                    comp_cell = ws.cell(row=r, column=2, value=irow["competencias_evaluadas"])
+                    comp_cell.font = FONT_BODY
+                    comp_cell.fill = fill
+                    comp_cell.alignment = LEFT
+                    for c in range(3, 9):
+                        ws.cell(row=r, column=c).fill = fill
+                    val_cell = ws.cell(row=r, column=9, value=r1(irow["pct_aciertos"]))
+                    val_cell.font = FONT_OUTSTANDING
                     val_cell.fill = fill
                     val_cell.alignment = CENTER
                     r += 1
