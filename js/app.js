@@ -476,6 +476,3 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.getElementById('view-'+btn.dataset.view).classList.add('active');
   });
 });
-
-/* ---------- data notice ---------- */
-document.getElementById('dataNotice').textContent = 'Nota: se incluyen '+DATA.courses.length+' aplicaciones del test (TA1+TA2) de '+carreraCount+' carreras. La carrera "Economía (Presencial)" no estaba incluida en Cuadros_oficiales_por_carrera.xlsx y se reconstruyó desde informe_test_aprendizaje.xlsx con la misma metodología.';
