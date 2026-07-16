@@ -118,11 +118,11 @@ const carreraCount = programList.length;
 gView.appendChild(kpiRow([
   {label:'Evaluaciones aplicadas (TA1+TA2)', icon:'clipboard', value: totalN.toLocaleString('es-EC'), sub: DATA.courses.length+' aplicaciones del test · '+carreraCount+' carreras'},
   {label:'Promedio TA1', icon:'trending', value: fmt1(promTA1)+'%', sub: totalN1.toLocaleString('es-EC')+' estudiantes evaluados'},
-  {label:'Promedio TA2', icon:'trending', value: fmt1(promTA2)+'%', sub: totalN2.toLocaleString('es-EC')+' estudiantes evaluados'},
-  {label:'% Satisfactorio o superior — TA1', icon:'award', value: fmt1(satSob1/totalN1*100)+'%'},
-  {label:'% Satisfactorio o superior — TA2', icon:'award', value: fmt1(satSob2/totalN2*100)+'%'},
   {label:'Preguntas — TA1', icon:'list', value: totalPreguntasTA1.toLocaleString('es-EC'), sub: ta1Courses.length+' carreras evaluadas'},
+  {label:'% Satisfactorio o superior — TA1', icon:'award', value: fmt1(satSob1/totalN1*100)+'%'},
+  {label:'Promedio TA2', icon:'trending', value: fmt1(promTA2)+'%', sub: totalN2.toLocaleString('es-EC')+' estudiantes evaluados'},
   {label:'Preguntas — TA2', icon:'list', value: totalPreguntasTA2.toLocaleString('es-EC'), sub: ta2Courses.length+' carreras evaluadas'},
+  {label:'% Satisfactorio o superior — TA2', icon:'award', value: fmt1(satSob2/totalN2*100)+'%'},
 ]));
 
 /* --- resultado por programa, TA1 y TA2 como paneles independientes --- */
@@ -312,6 +312,7 @@ cView.appendChild(carreraBody);
 let activeProgram = programList[0];
 let carreraCompFilter = null;
 let carreraNivelFilter = null;
+let carreraTipoFilter = null;
 let carreraHiddenLevels = new Set();
 const selBtns = [];
 programList.forEach(p=>{
@@ -320,6 +321,7 @@ programList.forEach(p=>{
     activeProgram = p;
     carreraCompFilter = null;
     carreraNivelFilter = null;
+    carreraTipoFilter = null;
     carreraHiddenLevels = new Set();
     selBtns.forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
@@ -333,6 +335,7 @@ function goToProgram(p, opts){
   activeProgram = p;
   carreraCompFilter = (opts && opts.comp) || null;
   carreraNivelFilter = (opts && opts.nivel) || null;
+  carreraTipoFilter = null;
   carreraHiddenLevels = new Set();
   selBtns.forEach((b,i)=> b.classList.toggle('active', programList[i]===p));
   renderCarrera();
@@ -353,17 +356,31 @@ function renderCarrera(){
   const c2list = compByCourse[v2?v2.id:''] || [];
   carreraBody.appendChild(kpiRow([
     {label:'Estudiantes TA1', icon:'users', value: v1? v1.n : '—'},
-    {label:'Estudiantes TA2', icon:'users', value: v2? v2.n : '—'},
     {label:'Preguntas TA1', icon:'list', value: v1? nPreguntas(v1) : '—'},
-    {label:'Preguntas TA2', icon:'list', value: v2? nPreguntas(v2) : '—'},
     {label:'Promedio TA1', icon:'trending', value: v1? fmt1(v1.prom)+'%':'—', sub: v1? v1.nivel: ''},
+    {label:'Estudiantes TA2', icon:'users', value: v2? v2.n : '—'},
+    {label:'Preguntas TA2', icon:'list', value: v2? nPreguntas(v2) : '—'},
     {label:'Promedio TA2', icon:'trending', value: v2? fmt1(v2.prom)+'%':'—', sub: v2? v2.nivel: ''},
   ]));
+
+  /* CE vs CT summary for this carrera */
+  function avgByPrefix(list, prefix){
+    const vals = list.filter(r=>r.competencia.startsWith(prefix)).map(r=>r.prom);
+    return vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+  }
+  function avgPctByPrefix(list, prefix){
+    const matches = list.filter(r=>r.competencia.startsWith(prefix));
+    if(!matches.length) return null;
+    const out = {};
+    ['insuf','ed','sat','sob'].forEach(k=> out[k] = matches.reduce((a,r)=>a+r.pct[k],0)/matches.length);
+    return out;
+  }
+  const tipoName = {CE:'Específicas (CE)', CT:'Transversales (CT)'};
 
   /* stacked nivel TA1 vs TA2 */
   const sCard2 = el('div',{class:'card'});
   sCard2.appendChild(el('h2',null,[iconBadge('layers'),'Distribución de niveles: TA1 y TA2']));
-  sCard2.appendChild(el('p',{class:'caption'},'Clic en la leyenda para aislar un nivel.'));
+  sCard2.appendChild(el('p',{class:'caption'},'Clic en la leyenda para aislar un nivel.'+(carreraTipoFilter?(' Recalculado solo con competencias '+tipoName[carreraTipoFilter]+'.'):'')));
   const carreraLegend = el('div',{class:'legend'});
   ['insuf','ed','sat','sob'].forEach(k=>{
     const item = el('div',{class:'legend-item toggle'+(carreraHiddenLevels.has(k)?' off':'')},[el('span',{class:'swatch',style:`background:${NIVEL_COLOR[k]}`}), NIVEL_LABEL[k]]);
@@ -374,47 +391,53 @@ function renderCarrera(){
     carreraLegend.appendChild(item);
   });
   sCard2.appendChild(carreraLegend);
-  [['TA1',v1],['TA2',v2]].forEach(([lbl,c])=>{
+  [['TA1',v1,c1list],['TA2',v2,c2list]].forEach(([lbl,c,list])=>{
     const row = el('div',{class:'stack-row'});
     row.appendChild(el('div',{class:'stack-label'}, lbl));
     const bar = el('div',{class:'stack-bar'});
-    if(c){
+    const pctSource = c ? (carreraTipoFilter ? avgPctByPrefix(list, carreraTipoFilter) : c.pct) : null;
+    if(pctSource){
       ['insuf','ed','sat','sob'].forEach(k=>{
-        const pct = c.pct[k];
+        const pct = pctSource[k];
         if(pct<=0) return;
         const seg = el('div',{class:'stack-seg', style:`width:${pct}%;background:${NIVEL_COLOR[k]};opacity:${carreraHiddenLevels.has(k)?0.15:1}`});
-        attachTip(seg, NIVEL_LABEL[k]+': '+fmt1(pct)+'% ('+c.counts[k]+' est.)');
+        const tip = carreraTipoFilter
+          ? NIVEL_LABEL[k]+': '+fmt1(pct)+'% (promedio de competencias '+tipoName[carreraTipoFilter]+')'
+          : NIVEL_LABEL[k]+': '+fmt1(pct)+'% ('+c.counts[k]+' est.)';
+        attachTip(seg, tip);
         bar.appendChild(seg);
       });
     }
     row.appendChild(bar);
-    row.appendChild(el('div',{class:'stack-n'}, c? 'n = '+c.n : 'sin datos'));
+    const matchCount = carreraTipoFilter && c ? list.filter(r=>r.competencia.startsWith(carreraTipoFilter)).length : null;
+    row.appendChild(el('div',{class:'stack-n'}, c? ('n = '+c.n+(matchCount!=null?' · prom. '+matchCount+' comp.':'')) : 'sin datos'));
     sCard2.appendChild(row);
   });
-
-  /* CE vs CT summary for this carrera */
-  function avgByPrefix(list, prefix){
-    const vals = list.filter(r=>r.competencia.startsWith(prefix)).map(r=>r.prom);
-    return vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : null;
-  }
   const ceCard2 = el('div',{class:'card'});
   ceCard2.appendChild(el('h2',null,[iconBadge('scale'),'Competencias específicas vs. transversales']));
-  ceCard2.appendChild(el('p',{class:'caption'},'Promedio de logro en esta carrera. TA1 y TA2 mostrados por separado.'));
   ceCard2.appendChild(el('div',{class:'legend'},[
-    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
-    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'TA2']),
+    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'Específicas (CE)']),
+    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-2)'}),'Transversales (CT)']),
   ]));
-  [['Específicas (CE)','CE'], ['Transversales (CT)','CT']].forEach(([label,prefix])=>{
+  ceCard2.appendChild(el('p',{class:'caption', style:'margin-top:-8px;'},'Dentro de cada tipo: barra más clara = TA1, barra sólida = TA2.'));
+  function toggleTipoFilter(prefix){
+    carreraTipoFilter = (carreraTipoFilter===prefix) ? null : prefix;
+    carreraCompFilter = null;
+    renderCarrera();
+  }
+  [['Específicas (CE)','CE','var(--series-1)'], ['Transversales (CT)','CT','var(--series-2)']].forEach(([label,prefix,color])=>{
+    const isSel = carreraTipoFilter===prefix;
+    const isDimmed = carreraTipoFilter && !isSel;
     [['TA1',avgByPrefix(c1list,prefix),.42],['TA2',avgByPrefix(c2list,prefix),1]].forEach(([lbl,val,op])=>{
       if(val==null) return;
-      const row = el('div',{class:'hbar-row', style:'grid-template-columns:130px 1fr 46px'});
+      const row = el('div',{class:'hbar-row clickable'+(isSel?' selected':''), style:`grid-template-columns:130px 1fr 46px${isDimmed?';opacity:.4':''}`, onclick:()=>toggleTipoFilter(prefix)});
       row.appendChild(el('div',{class:'hlabel'},[el('b',null,label),' · '+lbl]));
       const track = el('div',{class:'hbar-track'});
-      const fill = el('div',{class:'hbar-fill', style:`width:${val}%;background:var(--series-1);opacity:${op}`});
+      const fill = el('div',{class:'hbar-fill', style:`width:${val}%;background:${color};opacity:${op}`});
       track.appendChild(fill);
       row.appendChild(track);
       row.appendChild(el('div',{class:'hval'}, fmt1(val)+'%'));
-      attachTip(row, label+' '+lbl+': '+fmt1(val)+'% de logro promedio');
+      attachTip(row, label+' '+lbl+': '+fmt1(val)+'% de logro promedio · clic para filtrar todos los gráficos por '+label);
       ceCard2.appendChild(row);
     });
   });
@@ -427,15 +450,17 @@ function renderCarrera(){
   /* competencias grouped bars */
   const compCard = el('div',{class:'card'});
   compCard.appendChild(el('h2',null,[iconBadge('bars'),'Logro por competencia']));
-  compCard.appendChild(el('p',{class:'caption'},'CE = competencia específica de la carrera · CT = competencia transversal. TA1 y TA2 mostrados por separado. Clic en una barra para filtrar "Resultados por ítem" por esa competencia.'));
+  compCard.appendChild(el('p',{class:'caption'},'TA1 y TA2 mostrados por separado. Clic en una barra para filtrar "Resultados por ítem" por esa competencia.'));
   compCard.appendChild(el('div',{class:'legend'},[
-    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
-    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'TA2']),
+    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1)'}),'CE (específica)']),
+    el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-2)'}),'CT (transversal)']),
   ]));
+  compCard.appendChild(el('p',{class:'caption', style:'margin-top:-6px;'},'Dentro de cada competencia: barra más clara = TA1, barra sólida = TA2.'));
   const codes = COMP_ORDER.filter(code => c1list.some(r=>r.competencia===code) || c2list.some(r=>r.competencia===code));
   const gwrap = el('div',{class:'gbar-wrap'});
   function toggleCompFilter(code){
     carreraCompFilter = (carreraCompFilter===code) ? null : code;
+    carreraTipoFilter = null;
     renderCarrera();
   }
   codes.forEach(code=>{
@@ -444,14 +469,16 @@ function renderCarrera(){
     const cat = el('div',{class:'gbar-cat'});
     const bars = el('div',{class:'gbar-bars'});
     const isSel = carreraCompFilter===code;
+    const color = code.startsWith('CE') ? 'var(--series-1)' : 'var(--series-2)';
+    const dim = carreraTipoFilter && !code.startsWith(carreraTipoFilter) ? ';opacity:.25' : '';
     if(r1){
-      const col1 = el('div',{class:'gbar-col'+(isSel?' selected':''), style:`height:${r1.prom}%;background:var(--series-1);opacity:.42`, onclick:()=>toggleCompFilter(code)});
+      const col1 = el('div',{class:'gbar-col'+(isSel?' selected':''), style:`height:${r1.prom}%;background:${color};opacity:.42${dim}`, onclick:()=>toggleCompFilter(code)});
       col1.appendChild(el('div',{class:'val'}, fmt1(r1.prom)));
       attachTip(col1, code+' TA1: '+fmt1(r1.prom)+'% · '+r1.n_items+' preg. · '+r1.nivel+' · clic para filtrar');
       bars.appendChild(col1);
     }
     if(r2){
-      const col2 = el('div',{class:'gbar-col'+(isSel?' selected':''), style:`height:${r2.prom}%;background:var(--series-1)`, onclick:()=>toggleCompFilter(code)});
+      const col2 = el('div',{class:'gbar-col'+(isSel?' selected':''), style:`height:${r2.prom}%;background:${color}${dim}`, onclick:()=>toggleCompFilter(code)});
       col2.appendChild(el('div',{class:'val'}, fmt1(r2.prom)));
       attachTip(col2, code+' TA2: '+fmt1(r2.prom)+'% · '+r2.n_items+' preg. · '+r2.nivel+' · clic para filtrar');
       bars.appendChild(col2);
@@ -463,7 +490,8 @@ function renderCarrera(){
   const axis = el('div',{class:'gbar-axis'});
   codes.forEach(code=>{
     const rAny = c1list.find(r=>r.competencia===code) || c2list.find(r=>r.competencia===code);
-    const codeSpan = el('span',{class:'axis-code'}, code);
+    const dimAxis = carreraTipoFilter && !code.startsWith(carreraTipoFilter);
+    const codeSpan = el('span',{class:'axis-code', style: dimAxis?'opacity:.35':''}, code);
     if(rAny && rAny.descripcion) attachTip(codeSpan, rAny.descripcion);
     axis.appendChild(el('span',null,codeSpan));
   });
@@ -497,6 +525,7 @@ function renderCarrera(){
           const same = carreraCompFilter===r.competencia && carreraNivelFilter===k;
           carreraCompFilter = same ? null : r.competencia;
           carreraNivelFilter = same ? null : k;
+          carreraTipoFilter = null;
           renderCarrera();
         }}, fmt1(pct)+'%');
         attachTip(td, r.competencia+' — '+NIVEL_LABEL[k]+': '+fmt1(pct)+'% · clic para filtrar');
@@ -513,7 +542,8 @@ function renderCarrera(){
         el('div',{class:'meta-badge '+(metaOk?'good':'bad')},[icon(metaOk?'check':'alert'), el('span',null,fmt1(metaPct)+'%')])
       );
       attachTip(metaCell, r.competencia+' — Satisfactorio + Sobresaliente: '+fmt1(metaPct)+'% · Meta institucional 70% · '+(metaOk?'Cumplida':'No cumplida'));
-      table.appendChild(el('tr',null,[compCell, ...cells, metaCell]));
+      const dimRow = carreraTipoFilter && !r.competencia.startsWith(carreraTipoFilter);
+      table.appendChild(el('tr',{style: dimRow?'opacity:.35':''},[compCell, ...cells, metaCell]));
     });
     card.appendChild(table);
     return card;
@@ -526,7 +556,7 @@ function renderCarrera(){
   /* resultados por item */
   const itCard = el('div',{class:'card'});
   itCard.appendChild(el('h2',null,[iconBadge('list'),'Resultados por ítem']));
-  itCard.appendChild(el('p',{class:'caption'},'% de aciertos de cada pregunta del test, TA1 y TA2. Clic en una fila para filtrar por su competencia. Clic en una barra de "Logro por competencia" o en una celda del mapa de calor también filtra aquí.'));
+  itCard.appendChild(el('p',{class:'caption'},'% de aciertos de cada pregunta del test, TA1 y TA2. Clic en una fila para filtrar por su competencia. Clic en una barra de "Logro por competencia", en una celda del mapa de calor o en "Competencias específicas vs. transversales" también filtra aquí.'));
   const itemToggle = el('div',{class:'stack-toggle'});
   const btnAllItems = el('button',{class:'pill'+(carreraNivelFilter?'':' active'), onclick:()=>{carreraNivelFilter=null;renderCarrera();}},'Todos los ítems');
   const btnInsuf = el('button',{class:'pill'+(carreraNivelFilter==='insuf'?' active':''), onclick:()=>{carreraNivelFilter = carreraNivelFilter==='insuf'?null:'insuf'; renderCarrera();}},'Solo insuficientes (<50%)');
@@ -542,10 +572,17 @@ function renderCarrera(){
   if(carreraCompFilter){
     rows = rows.filter(r=> r.competencias.includes(carreraCompFilter));
   }
+  if(carreraTipoFilter){
+    rows = rows.filter(r=> r.competencias.split('/').some(c=>c.trim().startsWith(carreraTipoFilter)));
+  }
   const chipRow = el('div',{style:'display:flex;flex-wrap:wrap;gap:8px;'});
   if(carreraCompFilter){
     chipRow.appendChild(el('button',{class:'filter-chip', onclick:()=>{carreraCompFilter=null;renderCarrera();}},
       ['Competencia: '+carreraCompFilter, el('span',{class:'x'},'✕')]));
+  }
+  if(carreraTipoFilter){
+    chipRow.appendChild(el('button',{class:'filter-chip', onclick:()=>{carreraTipoFilter=null;renderCarrera();}},
+      ['Tipo: '+tipoName[carreraTipoFilter], el('span',{class:'x'},'✕')]));
   }
   if(carreraNivelFilter){
     chipRow.appendChild(el('button',{class:'filter-chip', onclick:()=>{carreraNivelFilter=null;renderCarrera();}},
@@ -564,6 +601,7 @@ function renderCarrera(){
       const tr = el('tr',{class:'clickable', onclick:()=>{
         const code = firstCompCode(r.competencias);
         carreraCompFilter = (carreraCompFilter===code) ? null : code;
+        carreraTipoFilter = null;
         renderCarrera();
       }}, [
         el('td',null,r.ronda), el('td',null,r.codigo), el('td',null,r.competencias),
