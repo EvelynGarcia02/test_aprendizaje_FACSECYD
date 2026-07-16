@@ -18,6 +18,29 @@ function el(tag, attrs, children){
   });
   return e;
 }
+const ICON_PATHS = {
+  clipboard:'<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/>',
+  trending:'<path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/>',
+  award:'<circle cx="12" cy="8" r="6"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  bars:'<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>',
+  layers:'<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+  scale:'<line x1="7" y1="20" x2="7" y2="10"/><line x1="17" y1="20" x2="17" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/>',
+  alert:'<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  check:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+  list:'<path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="m3 15 2 2 4-4"/><path d="M13 16h8"/>',
+};
+function icon(name){
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]||''}</svg>`;
+  return wrap.firstElementChild;
+}
+function iconBadge(name){
+  const badge = el('div',{class:'icon-badge'});
+  badge.appendChild(icon(name));
+  return badge;
+}
 const tooltip = document.getElementById('tooltip');
 function showTip(evt, text){
   tooltip.textContent = text;
@@ -71,8 +94,11 @@ const gView = document.getElementById('view-global');
 function kpiRow(items){
   const row = el('div',{class:'kpi-row'});
   items.forEach(it=>{
+    const top = el('div',{class:'kpi-top'});
+    if(it.icon) top.appendChild(iconBadge(it.icon));
+    top.appendChild(el('div',{class:'label'}, it.label));
     const box = el('div',{class:'kpi'},[
-      el('div',{class:'label'}, it.label),
+      top,
       el('div',{class:'value'}, it.value),
     ]);
     if(it.delta!=null){
@@ -87,17 +113,17 @@ function kpiRow(items){
 const carreraCount = programList.length;
 
 gView.appendChild(kpiRow([
-  {label:'Evaluaciones aplicadas (TA1+TA2)', value: totalN.toLocaleString('es-EC'), sub: DATA.courses.length+' aplicaciones del test · '+carreraCount+' carreras'},
-  {label:'Promedio TA1', value: fmt1(promTA1)+'%', sub: totalN1.toLocaleString('es-EC')+' estudiantes evaluados'},
-  {label:'Promedio TA2', value: fmt1(promTA2)+'%', sub: totalN2.toLocaleString('es-EC')+' estudiantes evaluados'},
-  {label:'% Satisfactorio o superior — TA1', value: fmt1(satSob1/totalN1*100)+'%'},
-  {label:'% Satisfactorio o superior — TA2', value: fmt1(satSob2/totalN2*100)+'%'},
+  {label:'Evaluaciones aplicadas (TA1+TA2)', icon:'clipboard', value: totalN.toLocaleString('es-EC'), sub: DATA.courses.length+' aplicaciones del test · '+carreraCount+' carreras'},
+  {label:'Promedio TA1', icon:'trending', value: fmt1(promTA1)+'%', sub: totalN1.toLocaleString('es-EC')+' estudiantes evaluados'},
+  {label:'Promedio TA2', icon:'trending', value: fmt1(promTA2)+'%', sub: totalN2.toLocaleString('es-EC')+' estudiantes evaluados'},
+  {label:'% Satisfactorio o superior — TA1', icon:'award', value: fmt1(satSob1/totalN1*100)+'%'},
+  {label:'% Satisfactorio o superior — TA2', icon:'award', value: fmt1(satSob2/totalN2*100)+'%'},
 ]));
 
 /* --- resultado por programa, TA1 y TA2 como paneles independientes --- */
 function rankCard(title, taKey){
   const card = el('div',{class:'card'});
-  card.appendChild(el('h2',null,title));
+  card.appendChild(el('h2',null,[iconBadge('bars'), title]));
   card.appendChild(el('p',{class:'caption'},'Promedio global de los estudiantes evaluados en esta ronda. Clic en un programa para ver su detalle.'));
   const list = programList.filter(p=>p[taKey]).slice().sort((a,b)=> b[taKey].prom - a[taKey].prom);
   list.forEach(p=>{
@@ -121,7 +147,7 @@ gView.appendChild(rankGrid);
 
 /* --- stacked 100% bar: distribución de niveles por programa --- */
 const sCard = el('div',{class:'card'});
-sCard.appendChild(el('h2',null,'Distribución de niveles de logro por programa'));
+sCard.appendChild(el('h2',null,[iconBadge('layers'),'Distribución de niveles de logro por programa']));
 sCard.appendChild(el('p',{class:'caption'},'Porcentaje de estudiantes en cada nivel de logro. Clic en un programa para ver su detalle · clic en la leyenda para aislar un nivel.'));
 let stackTA = 2;
 const stackToggle = el('div',{class:'stack-toggle'});
@@ -182,7 +208,7 @@ const worstItems = DATA.items.filter(i=>i.pct<50).sort((a,b)=>a.pct-b.pct).slice
 const bestItems = DATA.items.slice().sort((a,b)=>b.pct-a.pct).slice(0,10);
 
 const ceCard = el('div',{class:'card'});
-ceCard.appendChild(el('h2',null,'Competencias específicas vs. transversales'));
+ceCard.appendChild(el('h2',null,[iconBadge('scale'),'Competencias específicas vs. transversales']));
 ceCard.appendChild(el('p',{class:'caption'},'Promedio de logro institucional, todas las aplicaciones del test.'));
 [['Específicas (CE)',avgCE,'var(--series-1)'], ['Transversales (CT)',avgCT,'var(--series-2)']].forEach(([label,val,color])=>{
   const row = el('div',{class:'hbar-row', style:'grid-template-columns:130px 1fr 46px'});
@@ -197,9 +223,9 @@ ceCard.appendChild(el('p',{class:'caption'},'Promedio de logro institucional, to
 });
 gView.appendChild(ceCard);
 
-function itemListCard(title, caption, items, emptyMsg){
+function itemListCard(title, caption, items, emptyMsg, iconName){
   const card = el('div',{class:'card'});
-  card.appendChild(el('h2',null,title));
+  card.appendChild(el('h2',null,[iconBadge(iconName), title]));
   card.appendChild(el('p',{class:'caption'},caption));
   if(items.length===0){
     card.appendChild(el('div',{class:'empty-note'},emptyMsg));
@@ -228,12 +254,12 @@ const grid2 = el('div',{class:'grid-2'});
 grid2.appendChild(itemListCard(
   'Ítems con menor % de aciertos (institucional)',
   'Preguntas en nivel Insuficiente (< 50%) en toda la institución.',
-  worstItems, 'Ningún ítem por debajo del 50% a nivel institucional.'
+  worstItems, 'Ningún ítem por debajo del 50% a nivel institucional.', 'alert'
 ));
 grid2.appendChild(itemListCard(
   'Ítems con mayor % de aciertos (institucional)',
   'Las 10 preguntas con más aciertos en toda la institución.',
-  bestItems, 'Sin datos.'
+  bestItems, 'Sin datos.', 'check'
 ));
 gView.appendChild(grid2);
 
@@ -287,15 +313,15 @@ function renderCarrera(){
   const c1list = compByCourse[v1?v1.id:''] || [];
   const c2list = compByCourse[v2?v2.id:''] || [];
   carreraBody.appendChild(kpiRow([
-    {label:'Estudiantes TA1', value: v1? v1.n : '—'},
-    {label:'Estudiantes TA2', value: v2? v2.n : '—'},
-    {label:'Promedio TA1', value: v1? fmt1(v1.prom)+'%':'—', sub: v1? v1.nivel: ''},
-    {label:'Promedio TA2', value: v2? fmt1(v2.prom)+'%':'—', sub: v2? v2.nivel: ''},
+    {label:'Estudiantes TA1', icon:'users', value: v1? v1.n : '—'},
+    {label:'Estudiantes TA2', icon:'users', value: v2? v2.n : '—'},
+    {label:'Promedio TA1', icon:'trending', value: v1? fmt1(v1.prom)+'%':'—', sub: v1? v1.nivel: ''},
+    {label:'Promedio TA2', icon:'trending', value: v2? fmt1(v2.prom)+'%':'—', sub: v2? v2.nivel: ''},
   ]));
 
   /* stacked nivel TA1 vs TA2 */
   const sCard2 = el('div',{class:'card'});
-  sCard2.appendChild(el('h2',null,'Distribución de niveles: TA1 y TA2'));
+  sCard2.appendChild(el('h2',null,[iconBadge('layers'),'Distribución de niveles: TA1 y TA2']));
   sCard2.appendChild(el('p',{class:'caption'},'Clic en la leyenda para aislar un nivel.'));
   const carreraLegend = el('div',{class:'legend'});
   ['insuf','ed','sat','sob'].forEach(k=>{
@@ -331,7 +357,7 @@ function renderCarrera(){
     return vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : null;
   }
   const ceCard2 = el('div',{class:'card'});
-  ceCard2.appendChild(el('h2',null,'Competencias específicas vs. transversales'));
+  ceCard2.appendChild(el('h2',null,[iconBadge('scale'),'Competencias específicas vs. transversales']));
   ceCard2.appendChild(el('p',{class:'caption'},'Promedio de logro en esta carrera. TA1 y TA2 mostrados por separado.'));
   ceCard2.appendChild(el('div',{class:'legend'},[
     el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
@@ -359,7 +385,7 @@ function renderCarrera(){
 
   /* competencias grouped bars */
   const compCard = el('div',{class:'card'});
-  compCard.appendChild(el('h2',null,'Logro por competencia'));
+  compCard.appendChild(el('h2',null,[iconBadge('bars'),'Logro por competencia']));
   compCard.appendChild(el('p',{class:'caption'},'CE = competencia específica de la carrera · CT = competencia transversal. TA1 y TA2 mostrados por separado. Clic en una barra para filtrar "Resultados por ítem" por esa competencia.'));
   compCard.appendChild(el('div',{class:'legend'},[
     el('div',{class:'legend-item'},[el('span',{class:'swatch',style:'background:var(--series-1);opacity:.42'}),'TA1']),
@@ -401,7 +427,7 @@ function renderCarrera(){
   /* mapa de calor competencia x nivel */
   function heatmapCard(title, list){
     const card = el('div',{class:'card'});
-    card.appendChild(el('h2',null,title));
+    card.appendChild(el('h2',null,[iconBadge('grid'), title]));
     card.appendChild(el('p',{class:'caption'},'% de estudiantes en cada nivel, por competencia.'));
     const scale = el('div',{class:'heat-scale'});
     scale.appendChild(el('span',null,'0%'));
@@ -442,7 +468,7 @@ function renderCarrera(){
 
   /* resultados por item */
   const itCard = el('div',{class:'card'});
-  itCard.appendChild(el('h2',null,'Resultados por ítem'));
+  itCard.appendChild(el('h2',null,[iconBadge('list'),'Resultados por ítem']));
   itCard.appendChild(el('p',{class:'caption'},'% de aciertos de cada pregunta del test, TA1 y TA2. Clic en una fila para filtrar por su competencia. Clic en una barra de "Logro por competencia" o en una celda del mapa de calor también filtra aquí.'));
   const itemToggle = el('div',{class:'stack-toggle'});
   const btnAllItems = el('button',{class:'pill'+(carreraNivelFilter?'':' active'), onclick:()=>{carreraNivelFilter=null;renderCarrera();}},'Todos los ítems');
