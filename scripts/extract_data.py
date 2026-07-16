@@ -17,10 +17,49 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pandas as pd
+from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parent.parent
 XLS = ROOT / "data" / "informe_test_aprendizaje.xlsx"
+CUADROS = ROOT / "data" / "Cuadros_oficiales_por_carrera.xlsx"
 OUT = ROOT / "js" / "data.js"
+
+COMP_ORDER = ["CE1", "CE2", "CE3", "CE4", "CT1", "CT2", "CT3", "CT4"]
+
+# hoja de Cuadros_oficiales_por_carrera.xlsx -> (carrera, modalidad) tal como
+# aparecen en informe_test_aprendizaje.xlsx
+SHEET_TO_PROGRAM = {
+    "Administración": ("Administración", "Presencial"),
+    "Contabilidad": ("Contabilidad y Auditoría", "Presencial"),
+    "Economía Presencial": ("Economía", "Presencial"),
+    "Economía en Línea": ("Economía", "En línea"),
+    "Turismo Presencial": ("Turismo", "Presencial"),
+    "Turismo en Línea": ("Turismo", "En línea"),
+}
+
+
+def load_descripciones():
+    """Lee la columna 'Descripción' (col. J) de cada hoja de
+    Cuadros_oficiales_por_carrera.xlsx -> {(carrera, modalidad): {competencia: descripcion}}.
+    Esa columna se agregó a mano en ese libro (build_cuadros_oficiales.py no la genera),
+    por eso se lee directo de celdas en vez de regenerar el archivo."""
+    if not CUADROS.exists():
+        return {}
+    wb = load_workbook(CUADROS, data_only=True)
+    result = {}
+    for sheet_name, program in SHEET_TO_PROGRAM.items():
+        if sheet_name not in wb.sheetnames:
+            continue
+        ws = wb[sheet_name]
+        descs = {}
+        for row in ws.iter_rows():
+            if len(row) < 10:
+                continue
+            code, desc = row[0].value, row[9].value
+            if isinstance(code, str) and code in COMP_ORDER and isinstance(desc, str) and desc.strip():
+                descs.setdefault(code, desc.strip())
+        result[program] = descs
+    return result
 
 
 def r1(x):
@@ -38,6 +77,8 @@ def main():
     ec = pd.read_excel(XLS, sheet_name="Estudiante_x_Competencia")
 
     nitems = ec.groupby(["nombre_test", "competencia"])["n_items"].first().to_dict()
+    curso_a_programa = {r["nombre_test"]: (r["carrera_nombre"], r["modalidad_nombre"]) for _, r in cg.iterrows()}
+    descripciones = load_descripciones()
 
     courses = []
     for _, r in cg.iterrows():
@@ -79,6 +120,8 @@ def main():
     competencias = []
     for _, r in cc.iterrows():
         key = (r["nombre_test"], r["competencia"])
+        programa = curso_a_programa.get(r["nombre_test"])
+        descripcion = descripciones.get(programa, {}).get(r["competencia"], "")
         competencias.append({
             "curso_id": r["nombre_test"],
             "competencia": r["competencia"],
@@ -86,6 +129,7 @@ def main():
             "n_items": int(nitems.get(key, 0)),
             "prom": r1(r["promedio_logro"]),
             "nivel": r["nivel_cohorte"],
+            "descripcion": descripcion,
             "pct": {
                 "insuf": r1(r["pct_insuficiente"]),
                 "ed": r1(r["pct_en_desarrollo"]),

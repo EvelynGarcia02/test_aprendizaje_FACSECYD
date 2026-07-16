@@ -87,6 +87,9 @@ const satSob1 = ta1Courses.reduce((a,c)=>a+c.counts.sat+c.counts.sob,0);
 const satSob2 = ta2Courses.reduce((a,c)=>a+c.counts.sat+c.counts.sob,0);
 const promTA1 = weighted(ta1Courses,'prom');
 const promTA2 = weighted(ta2Courses,'prom');
+const nPreguntas = c=> (itemsByCourse[c.id]||[]).length;
+const totalPreguntasTA1 = ta1Courses.reduce((a,c)=>a+nPreguntas(c),0);
+const totalPreguntasTA2 = ta2Courses.reduce((a,c)=>a+nPreguntas(c),0);
 
 /* ================= GLOBAL VIEW ================= */
 const gView = document.getElementById('view-global');
@@ -118,6 +121,8 @@ gView.appendChild(kpiRow([
   {label:'Promedio TA2', icon:'trending', value: fmt1(promTA2)+'%', sub: totalN2.toLocaleString('es-EC')+' estudiantes evaluados'},
   {label:'% Satisfactorio o superior — TA1', icon:'award', value: fmt1(satSob1/totalN1*100)+'%'},
   {label:'% Satisfactorio o superior — TA2', icon:'award', value: fmt1(satSob2/totalN2*100)+'%'},
+  {label:'Preguntas — TA1', icon:'list', value: totalPreguntasTA1.toLocaleString('es-EC'), sub: ta1Courses.length+' carreras evaluadas'},
+  {label:'Preguntas — TA2', icon:'list', value: totalPreguntasTA2.toLocaleString('es-EC'), sub: ta2Courses.length+' carreras evaluadas'},
 ]));
 
 /* --- resultado por programa, TA1 y TA2 como paneles independientes --- */
@@ -144,6 +149,40 @@ const rankGrid = el('div',{class:'grid-2'});
 rankGrid.appendChild(rankCard('Resultado por programa — TA1', 'ta1'));
 rankGrid.appendChild(rankCard('Resultado por programa — TA2', 'ta2'));
 gView.appendChild(rankGrid);
+
+/* --- cantidad de preguntas por programa --- */
+const qCard = el('div',{class:'card'});
+qCard.appendChild(el('h2',null,[iconBadge('list'),'Cantidad de preguntas por programa']));
+qCard.appendChild(el('p',{class:'caption'},'Número de preguntas del test aplicadas en cada carrera, por ronda.'));
+let qTA = 2;
+const qToggle = el('div',{class:'stack-toggle'});
+const qBtnTA1 = el('button',{class:'pill', onclick:()=>{qTA=1;renderQ();qBtnTA1.classList.add('active');qBtnTA2.classList.remove('active');}},'TA1');
+const qBtnTA2 = el('button',{class:'pill active', onclick:()=>{qTA=2;renderQ();qBtnTA2.classList.add('active');qBtnTA1.classList.remove('active');}},'TA2');
+qToggle.appendChild(qBtnTA1); qToggle.appendChild(qBtnTA2);
+qCard.appendChild(qToggle);
+const qBody = el('div',null,null);
+qCard.appendChild(qBody);
+const maxPreguntas = Math.max(...programList.flatMap(p=>[p.ta1?nPreguntas(p.ta1):0, p.ta2?nPreguntas(p.ta2):0]));
+function renderQ(){
+  qBody.innerHTML = '';
+  const color = qTA===1 ? 'var(--series-1)' : 'var(--series-2)';
+  const sorted = programList.filter(p=>p['ta'+qTA]).slice().sort((a,b)=> nPreguntas(b['ta'+qTA]) - nPreguntas(a['ta'+qTA]));
+  sorted.forEach(p=>{
+    const c = p['ta'+qTA];
+    const n = nPreguntas(c);
+    const row = el('div',{class:'hbar-row', style:'grid-template-columns:190px 1fr 46px'});
+    row.appendChild(el('div',{class:'hlabel'},[el('b',null,p.label)]));
+    const track = el('div',{class:'hbar-track'});
+    const fill = el('div',{class:'hbar-fill', style:`width:${n/maxPreguntas*100}%;background:${color}`});
+    track.appendChild(fill);
+    row.appendChild(track);
+    row.appendChild(el('div',{class:'hval'}, n));
+    attachTip(row, p.label+' — TA'+qTA+': '+n+' preguntas');
+    qBody.appendChild(row);
+  });
+}
+renderQ();
+gView.appendChild(qCard);
 
 /* --- stacked 100% bar: distribución de niveles por programa --- */
 const sCard = el('div',{class:'card'});
@@ -315,6 +354,8 @@ function renderCarrera(){
   carreraBody.appendChild(kpiRow([
     {label:'Estudiantes TA1', icon:'users', value: v1? v1.n : '—'},
     {label:'Estudiantes TA2', icon:'users', value: v2? v2.n : '—'},
+    {label:'Preguntas TA1', icon:'list', value: v1? nPreguntas(v1) : '—'},
+    {label:'Preguntas TA2', icon:'list', value: v2? nPreguntas(v2) : '—'},
     {label:'Promedio TA1', icon:'trending', value: v1? fmt1(v1.prom)+'%':'—', sub: v1? v1.nivel: ''},
     {label:'Promedio TA2', icon:'trending', value: v2? fmt1(v2.prom)+'%':'—', sub: v2? v2.nivel: ''},
   ]));
@@ -420,7 +461,12 @@ function renderCarrera(){
   });
   compCard.appendChild(gwrap);
   const axis = el('div',{class:'gbar-axis'});
-  codes.forEach(code=> axis.appendChild(el('span',null,code)));
+  codes.forEach(code=>{
+    const rAny = c1list.find(r=>r.competencia===code) || c2list.find(r=>r.competencia===code);
+    const codeSpan = el('span',{class:'axis-code'}, code);
+    if(rAny && rAny.descripcion) attachTip(codeSpan, rAny.descripcion);
+    axis.appendChild(el('span',null,codeSpan));
+  });
   compCard.appendChild(axis);
   carreraBody.appendChild(compCard);
 
@@ -434,14 +480,14 @@ function renderCarrera(){
     scale.appendChild(el('div',{class:'heat-scale-bar'}));
     scale.appendChild(el('span',null,'100%'));
     card.appendChild(scale);
-    card.appendChild(el('p',{class:'caption'},'Clic en una celda para filtrar "Resultados por ítem" por esa competencia y nivel.'));
+    card.appendChild(el('p',{class:'caption'},'Clic en una celda para filtrar "Resultados por ítem" por esa competencia y nivel. Meta institucional: ≥70% de estudiantes en Satisfactorio + Sobresaliente.'));
     const ordered = COMP_ORDER.filter(code=>list.some(r=>r.competencia===code)).map(code=>list.find(r=>r.competencia===code));
     if(!ordered.length){
       card.appendChild(el('div',{class:'empty-note'},'Sin datos para esta ronda.'));
       return card;
     }
     const table = el('table',{class:'datatable heatmap'});
-    table.appendChild(el('tr',null,[el('th',null,''), el('th',null,'Insuf.'), el('th',null,'En des.'), el('th',null,'Satisf.'), el('th',null,'Sobres.')]));
+    table.appendChild(el('tr',null,[el('th',null,''), el('th',null,'Insuf.'), el('th',null,'En des.'), el('th',null,'Satisf.'), el('th',null,'Sobres.'), el('th',null,'Meta ≥70%')]));
     ordered.forEach(r=>{
       const cells = ['insuf','ed','sat','sob'].map(k=>{
         const pct = r.pct[k];
@@ -456,7 +502,18 @@ function renderCarrera(){
         attachTip(td, r.competencia+' — '+NIVEL_LABEL[k]+': '+fmt1(pct)+'% · clic para filtrar');
         return td;
       });
-      table.appendChild(el('tr',null,[el('td',null,el('b',null,r.competencia)), ...cells]));
+      const compCell = el('td',null,[
+        el('b',{class:'heat-comp-code'}, r.competencia),
+        el('div',{class:'heat-comp-n'}, r.n_items+' preg.'),
+      ]);
+      attachTip(compCell, r.descripcion || (r.competencia+': sin descripción disponible.'));
+      const metaPct = r.pct.sat + r.pct.sob;
+      const metaOk = metaPct >= 70;
+      const metaCell = el('td',{class:'meta-cell'},
+        el('div',{class:'meta-badge '+(metaOk?'good':'bad')},[icon(metaOk?'check':'alert'), el('span',null,fmt1(metaPct)+'%')])
+      );
+      attachTip(metaCell, r.competencia+' — Satisfactorio + Sobresaliente: '+fmt1(metaPct)+'% · Meta institucional 70% · '+(metaOk?'Cumplida':'No cumplida'));
+      table.appendChild(el('tr',null,[compCell, ...cells, metaCell]));
     });
     card.appendChild(table);
     return card;

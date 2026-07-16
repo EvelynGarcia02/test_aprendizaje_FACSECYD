@@ -64,7 +64,7 @@ header.top h1 span{display:block;margin-top:8px;font-size:14px;font-weight:500;l
 @media (prefers-color-scheme:dark){.tab-btn.active{color:#fff;}}
 .view{display:none;}
 .view.active{display:block;}
-.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px;}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;}
 .kpi{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--card-radius);padding:14px 16px;box-shadow:0 1px 2px rgba(20,30,40,.03);display:flex;flex-direction:column;gap:8px;}
 .kpi .kpi-top{display:flex;align-items:center;gap:10px;}
 .kpi .label{font-size:12px;color:var(--text-secondary);}
@@ -114,6 +114,7 @@ header.top h1 span{display:block;margin-top:8px;font-size:14px;font-weight:500;l
 .gbar-col .val{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10.5px;color:var(--text-secondary);white-space:nowrap;}
 .gbar-axis{display:flex;gap:18px;padding:6px 4px 0;}
 .gbar-axis span{flex:1;text-align:center;font-size:11px;color:var(--text-muted);}
+.gbar-axis .axis-code{cursor:help;border-bottom:1px dotted var(--baseline);padding-bottom:1px;}
 
 /* simple horizontal bars (items criticos, CE/CT) */
 .hbar-row{display:grid;grid-template-columns:210px 1fr 46px;align-items:center;gap:10px;padding:5px 0;}
@@ -139,6 +140,13 @@ table.heatmap th:first-child{width:52px;}
 table.heatmap td.heat-cell{text-align:center;font-weight:600;padding:12px 6px;border-bottom:2px solid var(--surface-1);border-radius:4px;cursor:pointer;transition:outline-color .12s;}
 table.heatmap td.heat-cell.selected{outline:2px solid var(--text-primary);outline-offset:-2px;}
 table.heatmap td:first-child{border-bottom:none;padding:8px 6px;}
+.heat-comp-code{cursor:help;border-bottom:1px dotted var(--baseline);padding-bottom:1px;}
+.heat-comp-n{font-size:10px;font-weight:400;color:var(--text-muted);margin-top:2px;}
+table.heatmap td.meta-cell{text-align:center;padding:12px 4px;}
+.meta-badge{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:12px;white-space:nowrap;}
+.meta-badge svg{width:14px;height:14px;flex:none;}
+.meta-badge.good{color:var(--good-text);}
+.meta-badge.bad{color:var(--bad-text);}
 .heat-scale{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:11px;color:var(--text-muted);}
 .heat-scale-bar{flex:1;max-width:180px;height:8px;border-radius:4px;background:linear-gradient(to right, var(--surface-1), var(--series-1));border:1px solid var(--border);}
 
