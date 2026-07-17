@@ -274,7 +274,7 @@ function itemListCard(title, caption, items, emptyMsg, iconName){
       const band = nivelBand(it.pct);
       const row = el('div',{class:'hbar-row clickable', onclick:()=>{
         const target = programList.find(p=> (p.ta1&&p.ta1.id===it.curso_id) || (p.ta2&&p.ta2.id===it.curso_id));
-        if(target) goToProgram(target, {comp: firstCompCode(it.competencias), nivel: band});
+        if(target) goToProgram(target, {comp: firstCompCode(it.competencias), nivel: band, ronda: course? 'TA'+course.ta : null});
       }});
       row.appendChild(el('div',{class:'hlabel'},[el('b',null,it.codigo),' · '+(course?course.carrera:'')+' · '+it.competencias]));
       const track = el('div',{class:'hbar-track'});
@@ -338,7 +338,7 @@ function goToProgram(p, opts){
   carreraCompFilter = (opts && opts.comp) || null;
   carreraNivelFilter = (opts && opts.nivel) || null;
   carreraTipoFilter = null;
-  carreraRondaFilter = null;
+  carreraRondaFilter = (opts && opts.ronda) || null;
   carreraHiddenLevels = new Set();
   selBtns.forEach((b,i)=> b.classList.toggle('active', programList[i]===p));
   renderCarrera();
