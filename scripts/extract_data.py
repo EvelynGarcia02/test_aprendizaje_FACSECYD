@@ -22,7 +22,19 @@ from openpyxl import load_workbook
 ROOT = Path(__file__).resolve().parent.parent
 XLS = ROOT / "data" / "informe_test_aprendizaje.xlsx"
 CUADROS = ROOT / "data" / "Cuadros_oficiales_por_carrera.xlsx"
+CURSOS_ACBSP = ROOT / "data" / "CURSOS_ACBSP_2026.xlsx"
 OUT = ROOT / "js" / "data.js"
+
+# fila (CARRERA, MODALIDAD) de la hoja "Resumen" de CURSOS_ACBSP_2026.xlsx ->
+# (carrera, modalidad) tal como aparecen en informe_test_aprendizaje.xlsx
+CARRERA_MODALIDAD_MAP = {
+    ("TURISMO 2019", "PRESENCIAL"): ("Turismo", "Presencial"),
+    ("ECONOMIA 2019", "PRESENCIAL"): ("Economía", "Presencial"),
+    ("CONTABILIDAD Y AUDITORIA 2019", "PRESENCIAL"): ("Contabilidad y Auditoría", "Presencial"),
+    ("ADMINISTRACION DE EMPRESAS 2019", "PRESENCIAL"): ("Administración", "Presencial"),
+    ("TURISMO", "EN LINEA"): ("Turismo", "En línea"),
+    ("ECONOMIA", "EN LINEA"): ("Economía", "En línea"),
+}
 
 COMP_ORDER = ["CE1", "CE2", "CE3", "CE4", "CT1", "CT2", "CT3", "CT4"]
 
@@ -62,6 +74,28 @@ def load_descripciones():
     return result
 
 
+def load_matriculados():
+    """Lee la hoja Resumen de CURSOS_ACBSP_2026.xlsx (estudiantes matriculados en el
+    aula virtual, es decir los que debian rendir) -> {(carrera, modalidad, ta): matriculados}."""
+    if not CURSOS_ACBSP.exists():
+        return {}
+    wb = load_workbook(CURSOS_ACBSP, data_only=True)
+    if "Resumen" not in wb.sheetnames:
+        return {}
+    ws = wb["Resumen"]
+    result = {}
+    for row in ws.iter_rows(values_only=True):
+        if not row or not isinstance(row[0], str) or not isinstance(row[1], str):
+            continue
+        program = CARRERA_MODALIDAD_MAP.get((row[0].strip(), row[1].strip()))
+        if not program:
+            continue
+        alumnos_p1, alumnos_p2 = row[2], row[3]
+        result[(program[0], program[1], 1)] = int(alumnos_p1)
+        result[(program[0], program[1], 2)] = int(alumnos_p2)
+    return result
+
+
 def r1(x):
     """Redondea a 1 decimal con 'mitad hacia arriba' (como Excel), evitando
     el error de punto flotante de round() built-in (ej. round(64.35, 1) == 64.3
@@ -79,6 +113,7 @@ def main():
     nitems = ec.groupby(["nombre_test", "competencia"])["n_items"].first().to_dict()
     curso_a_programa = {r["nombre_test"]: (r["carrera_nombre"], r["modalidad_nombre"]) for _, r in cg.iterrows()}
     descripciones = load_descripciones()
+    matriculados = load_matriculados()
 
     courses = []
     for _, r in cg.iterrows():
@@ -97,6 +132,7 @@ def main():
             "modalidad": r["modalidad_nombre"],
             "ta": int(r["nro_test"]),
             "n": int(r["n_estudiantes_unicos"]),
+            "matriculados": matriculados.get((r["carrera_nombre"], r["modalidad_nombre"], int(r["nro_test"]))),
             "prom": r1(r["promedio_global"]),
             "mediana": r1(r["mediana_global"]),
             "min": r1(r["minimo_global"]),

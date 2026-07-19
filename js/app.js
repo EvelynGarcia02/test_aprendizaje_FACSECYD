@@ -78,7 +78,6 @@ function weighted(courses, key){
   courses.forEach(c=>{ s += c[key]*c.n; sw += c.n; });
   return sw? s/sw : 0;
 }
-const totalN = DATA.courses.reduce((a,c)=>a+c.n,0);
 const ta1Courses = DATA.courses.filter(c=>c.ta===1);
 const ta2Courses = DATA.courses.filter(c=>c.ta===2);
 const totalN1 = ta1Courses.reduce((a,c)=>a+c.n,0);
@@ -90,6 +89,12 @@ const promTA2 = weighted(ta2Courses,'prom');
 const nPreguntas = c=> (itemsByCourse[c.id]||[]).length;
 const totalPreguntasTA1 = ta1Courses.reduce((a,c)=>a+nPreguntas(c),0);
 const totalPreguntasTA2 = ta2Courses.reduce((a,c)=>a+nPreguntas(c),0);
+const totalMat1 = ta1Courses.reduce((a,c)=>a+(c.matriculados||0),0);
+const totalMat2 = ta2Courses.reduce((a,c)=>a+(c.matriculados||0),0);
+const faltaron1 = totalMat1 - totalN1;
+const faltaron2 = totalMat2 - totalN2;
+const part1Pct = totalMat1 ? totalN1/totalMat1*100 : null;
+const part2Pct = totalMat2 ? totalN2/totalMat2*100 : null;
 
 /* ================= GLOBAL VIEW ================= */
 const gView = document.getElementById('view-global');
@@ -113,17 +118,63 @@ function kpiRow(items){
   return row;
 }
 
-const carreraCount = programList.length;
-
 gView.appendChild(kpiRow([
-  {label:'Evaluaciones aplicadas (TA1+TA2)', icon:'clipboard', value: totalN.toLocaleString('es-EC'), sub: DATA.courses.length+' aplicaciones del test · '+carreraCount+' carreras'},
+  {label:'Participación — TA1', icon:'users', value: part1Pct!=null? fmt1(part1Pct)+'%':'—', sub: totalN1.toLocaleString('es-EC')+' de '+totalMat1.toLocaleString('es-EC')+' matriculados', delta: faltaron1+' no rindieron', deltaGood:false},
   {label:'Promedio TA1', icon:'trending', value: fmt1(promTA1)+'%', sub: totalN1.toLocaleString('es-EC')+' estudiantes evaluados'},
   {label:'Preguntas — TA1', icon:'list', value: totalPreguntasTA1.toLocaleString('es-EC'), sub: ta1Courses.length+' carreras evaluadas'},
   {label:'% Satisfactorio o superior — TA1', icon:'award', value: fmt1(satSob1/totalN1*100)+'%'},
+]));
+gView.appendChild(kpiRow([
+  {label:'Participación — TA2', icon:'users', value: part2Pct!=null? fmt1(part2Pct)+'%':'—', sub: totalN2.toLocaleString('es-EC')+' de '+totalMat2.toLocaleString('es-EC')+' matriculados', delta: faltaron2+' no rindieron', deltaGood:false},
   {label:'Promedio TA2', icon:'trending', value: fmt1(promTA2)+'%', sub: totalN2.toLocaleString('es-EC')+' estudiantes evaluados'},
   {label:'Preguntas — TA2', icon:'list', value: totalPreguntasTA2.toLocaleString('es-EC'), sub: ta2Courses.length+' carreras evaluadas'},
   {label:'% Satisfactorio o superior — TA2', icon:'award', value: fmt1(satSob2/totalN2*100)+'%'},
 ]));
+
+/* --- participación: rendidos vs. matriculados por programa (dumbbell: punto tenue
+   = matriculados, punto solido = rindieron, unidos por una linea que representa
+   la brecha de los que faltaron) --- */
+function dumbbellCard(){
+  const partCard = el('div',{class:'card'});
+  partCard.appendChild(el('h2',null,[iconBadge('users'),'Participación — estudiantes evaluados vs. matriculados']));
+  partCard.appendChild(el('p',{class:'caption'},'De los estudiantes matriculados en el aula virtual, cuántos efectivamente rindieron el test, por programa. Ordenado de menor a mayor participación.'));
+  let partTA = 2;
+  const partToggle = el('div',{class:'stack-toggle'});
+  const partBtnTA1 = el('button',{class:'pill', onclick:()=>{partTA=1;renderPart();partBtnTA1.classList.add('active');partBtnTA2.classList.remove('active');}},'TA1');
+  const partBtnTA2 = el('button',{class:'pill active', onclick:()=>{partTA=2;renderPart();partBtnTA2.classList.add('active');partBtnTA1.classList.remove('active');}},'TA2');
+  partToggle.appendChild(partBtnTA1); partToggle.appendChild(partBtnTA2);
+  partCard.appendChild(partToggle);
+  const partLegend = el('div',{class:'legend'});
+  partCard.appendChild(partLegend);
+  const partBody = el('div',null,null);
+  partCard.appendChild(partBody);
+  function renderPart(){
+    const color = partTA===1 ? 'var(--series-1)' : 'var(--series-2)';
+    const lightColor = `color-mix(in srgb, ${color} 35%, var(--surface-1))`;
+    partLegend.innerHTML = '';
+    partLegend.appendChild(el('div',{class:'legend-item'},[el('span',{class:'swatch round',style:`background:${lightColor}`}), 'Matriculados']));
+    partLegend.appendChild(el('div',{class:'legend-item'},[el('span',{class:'swatch round',style:`background:${color}`}), 'Rindieron']));
+    partBody.innerHTML = '';
+    const rows = programList
+      .filter(p=>p['ta'+partTA] && p['ta'+partTA].matriculados)
+      .map(p=>{ const c = p['ta'+partTA]; return {p, c, pct: c.n/c.matriculados*100}; })
+      .sort((a,b)=> a.pct - b.pct);
+    rows.forEach(({p,c,pct})=>{
+      const row = el('div',{class:'hbar-row clickable', onclick:()=>goToProgram(p)});
+      row.appendChild(el('div',{class:'hlabel'},[el('b',null,p.label)]));
+      const track = el('div',{class:'dumbbell-track'});
+      track.appendChild(el('div',{class:'dumbbell-line', style:`left:${pct}%;right:0;`}));
+      track.appendChild(el('div',{class:'dumbbell-dot', style:`left:100%;background:${lightColor}`}));
+      track.appendChild(el('div',{class:'dumbbell-dot', style:`left:${pct}%;background:${color}`}));
+      row.appendChild(track);
+      row.appendChild(el('div',{class:'hval'}, fmt1(pct)+'%'));
+      attachTip(row, p.label+' — '+c.n+' de '+c.matriculados+' matriculados rindieron ('+(c.matriculados-c.n)+' no rindieron)');
+      partBody.appendChild(row);
+    });
+  }
+  renderPart();
+  return partCard;
+}
 
 /* --- resultado por programa, TA1 y TA2 como paneles independientes --- */
 function rankCard(title, taKey){
@@ -182,7 +233,10 @@ function renderQ(){
   });
 }
 renderQ();
-gView.appendChild(qCard);
+const partQGrid = el('div',{class:'grid-2'});
+partQGrid.appendChild(dumbbellCard());
+partQGrid.appendChild(qCard);
+gView.appendChild(partQGrid);
 
 /* --- stacked 100% bar: distribución de niveles por programa --- */
 const sCard = el('div',{class:'card'});
@@ -401,12 +455,22 @@ function renderCarrera(){
   const promTA2F = appliesTA2 ? avgByPred(c2list, filterPred) : (excludedTA2 ? 0 : (v2? v2.prom : null));
   const preguntasTA1F = appliesTA1 ? sumItemsByPred(c1list, filterPred) : (excludedTA1 ? 0 : (v1? nPreguntas(v1) : null));
   const preguntasTA2F = appliesTA2 ? sumItemsByPred(c2list, filterPred) : (excludedTA2 ? 0 : (v2? nPreguntas(v2) : null));
+  const matTA1 = v1 ? v1.matriculados : null;
+  const matTA2 = v2 ? v2.matriculados : null;
+  const matTA1F = excludedTA1 ? 0 : matTA1;
+  const matTA2F = excludedTA2 ? 0 : matTA2;
+  const partTA1F = excludedTA1 ? 0 : (matTA1 ? estudiantesTA1F/matTA1*100 : null);
+  const partTA2F = excludedTA2 ? 0 : (matTA2 ? estudiantesTA2F/matTA2*100 : null);
 
   carreraBody.appendChild(kpiRow([
     {label:'Estudiantes TA1', icon:'users', value: estudiantesTA1F!=null? estudiantesTA1F : '—', sub: appliesTA1? 'misma cohorte, medida en '+filterLabel : (excludedTA1? 'fuera del filtro actual' : '')},
+    {label:'Participación TA1', icon:'users', value: partTA1F!=null? fmt1(partTA1F)+'%':'—', sub: matTA1F!=null? (estudiantesTA1F+' de '+matTA1F+' matriculados') : (excludedTA1? 'fuera del filtro actual' : '')},
     {label:'Preguntas TA1'+(appliesTA1?' · '+filterLabel:''), icon:'list', value: preguntasTA1F!=null? preguntasTA1F : '—'},
     {label:'Promedio TA1'+(appliesTA1?' · '+filterLabel:''), icon:'trending', value: promTA1F!=null? fmt1(promTA1F)+'%':'—', sub: v1? (appliesTA1? '' : (excludedTA1? 'fuera del filtro actual' : v1.nivel)): ''},
+  ]));
+  carreraBody.appendChild(kpiRow([
     {label:'Estudiantes TA2', icon:'users', value: estudiantesTA2F!=null? estudiantesTA2F : '—', sub: appliesTA2? 'misma cohorte, medida en '+filterLabel : (excludedTA2? 'fuera del filtro actual' : '')},
+    {label:'Participación TA2', icon:'users', value: partTA2F!=null? fmt1(partTA2F)+'%':'—', sub: matTA2F!=null? (estudiantesTA2F+' de '+matTA2F+' matriculados') : (excludedTA2? 'fuera del filtro actual' : '')},
     {label:'Preguntas TA2'+(appliesTA2?' · '+filterLabel:''), icon:'list', value: preguntasTA2F!=null? preguntasTA2F : '—'},
     {label:'Promedio TA2'+(appliesTA2?' · '+filterLabel:''), icon:'trending', value: promTA2F!=null? fmt1(promTA2F)+'%':'—', sub: v2? (appliesTA2? '' : (excludedTA2? 'fuera del filtro actual' : v2.nivel)): ''},
   ]));
