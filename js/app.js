@@ -369,6 +369,7 @@ let carreraNivelFilter = null;
 let carreraTipoFilter = null;
 let carreraRondaFilter = null;
 let carreraHiddenLevels = new Set();
+let carreraArtExpanded = new Set();
 const selBtns = [];
 programList.forEach(p=>{
   const totalN2 = (p.ta1?p.ta1.n:0)+(p.ta2?p.ta2.n:0);
@@ -610,7 +611,7 @@ function renderCarrera(){
     scale.appendChild(el('div',{class:'heat-scale-bar'}));
     scale.appendChild(el('span',null,'100%'));
     card.appendChild(scale);
-    card.appendChild(el('p',{class:'caption'},'Clic en una celda para filtrar "Resultados por ítem" por esa competencia y nivel. Meta institucional: ≥70% de estudiantes en Satisfactorio + Sobresaliente.'));
+    card.appendChild(el('p',{class:'caption'},'Clic en el código de una competencia para filtrar "Resultados por ítem" solo por esa competencia. Clic en una celda para filtrar además por nivel. Meta institucional: ≥70% de estudiantes en Satisfactorio + Sobresaliente.'));
     const ordered = COMP_ORDER.filter(code=>list.some(r=>r.competencia===code)).map(code=>list.find(r=>r.competencia===code));
     if(!ordered.length){
       card.appendChild(el('div',{class:'empty-note'},'Sin datos para esta ronda.'));
@@ -634,11 +635,19 @@ function renderCarrera(){
         attachTip(td, r.competencia+' — '+NIVEL_LABEL[k]+': '+fmt1(pct)+'% · clic para filtrar');
         return td;
       });
-      const compCell = el('td',null,[
+      const isCompSel = carreraCompFilter===r.competencia && carreraNivelFilter===null && carreraRondaFilter===round;
+      const compCell = el('td',{class:'heat-comp-cell'+(isCompSel?' selected':''), onclick:()=>{
+        const same = carreraCompFilter===r.competencia && carreraNivelFilter===null && carreraRondaFilter===round;
+        carreraCompFilter = same ? null : r.competencia;
+        carreraNivelFilter = null;
+        carreraRondaFilter = same ? null : round;
+        carreraTipoFilter = null;
+        renderCarrera();
+      }},[
         el('b',{class:'heat-comp-code'}, r.competencia),
         el('div',{class:'heat-comp-n'}, r.n_items+' preg.'),
       ]);
-      attachTip(compCell, r.descripcion || (r.competencia+': sin descripción disponible.'));
+      attachTip(compCell, (r.descripcion || (r.competencia+': sin descripción disponible.'))+' · clic para filtrar por esta competencia');
       const metaPct = r.pct.sat + r.pct.sob;
       const metaOk = metaPct >= 70;
       const metaCell = el('td',{class:'meta-cell'},
@@ -660,6 +669,13 @@ function renderCarrera(){
   const itCard = el('div',{class:'card'});
   itCard.appendChild(el('h2',null,[iconBadge('list'),'Resultados por ítem']));
   itCard.appendChild(el('p',{class:'caption'},'% de aciertos de cada pregunta del test, TA1 y TA2. Clic en una fila para filtrar por su competencia. Clic en una barra de "Logro por competencia", en una celda del mapa de calor o en "Competencias específicas vs. transversales" también filtra aquí.'));
+  const rondaToggle = el('div',{class:'stack-toggle'});
+  const btnAllRondas = el('button',{class:'pill'+(carreraRondaFilter?'':' active'), onclick:()=>{carreraRondaFilter=null;renderCarrera();}},'TA1 + TA2');
+  const btnRondaTA1 = el('button',{class:'pill'+(carreraRondaFilter==='TA1'?' active':''), onclick:()=>{carreraRondaFilter = carreraRondaFilter==='TA1'?null:'TA1'; renderCarrera();}},'Solo TA1');
+  const btnRondaTA2 = el('button',{class:'pill'+(carreraRondaFilter==='TA2'?' active':''), onclick:()=>{carreraRondaFilter = carreraRondaFilter==='TA2'?null:'TA2'; renderCarrera();}},'Solo TA2');
+  rondaToggle.appendChild(btnAllRondas); rondaToggle.appendChild(btnRondaTA1); rondaToggle.appendChild(btnRondaTA2);
+  itCard.appendChild(rondaToggle);
+
   const itemToggle = el('div',{class:'stack-toggle'});
   const btnAllItems = el('button',{class:'pill'+(carreraNivelFilter?'':' active'), onclick:()=>{carreraNivelFilter=null;renderCarrera();}},'Todos los ítems');
   const btnInsuf = el('button',{class:'pill'+(carreraNivelFilter==='insuf'?' active':''), onclick:()=>{carreraNivelFilter = carreraNivelFilter==='insuf'?null:'insuf'; renderCarrera();}},'Solo insuficientes (<50%)');
@@ -694,6 +710,10 @@ function renderCarrera(){
     chipRow.appendChild(el('button',{class:'filter-chip', onclick:()=>{carreraNivelFilter=null;renderCarrera();}},
       ['Nivel: '+NIVEL_LABEL[carreraNivelFilter], el('span',{class:'x'},'✕')]));
   }
+  if(carreraRondaFilter && !carreraCompFilter && !carreraTipoFilter){
+    chipRow.appendChild(el('button',{class:'filter-chip', onclick:()=>{carreraRondaFilter=null;renderCarrera();}},
+      ['Ronda: '+carreraRondaFilter, el('span',{class:'x'},'✕')]));
+  }
   if(chipRow.children.length) itCard.appendChild(chipRow);
 
   if(rows.length===0){
@@ -722,6 +742,46 @@ function renderCarrera(){
     itCard.appendChild(tableScroll);
   }
   carreraBody.appendChild(itCard);
+
+  /* asignaturas por competencia */
+  const artData = (typeof ARTICULACION!=='undefined') ? ARTICULACION[programKey(p)] : null;
+  if(artData && artData.length){
+    const artCard = el('div',{class:'card'});
+    artCard.appendChild(el('h2',null,[iconBadge('layers'),'Asignaturas por competencia']));
+    artCard.appendChild(el('p',{class:'caption'},'Asignaturas del plan de estudios articuladas con cada resultado de aprendizaje de la carrera, según la matriz de articulación curricular. Clic en una competencia para ver sus asignaturas.'));
+    const accordion = el('div',{class:'comp-accordion'});
+    const ordered = COMP_ORDER.map(code=>artData.find(c=>c.codigo===code)).filter(Boolean)
+      .concat(artData.filter(c=>!c.codigo));
+    ordered.forEach(comp=>{
+      const stateKey = programKey(p)+'|'+comp.label;
+      const isOpen = carreraArtExpanded.has(stateKey);
+      const item = el('div',{class:'comp-acc-item'+(isOpen?' open':'')});
+      const head = el('button',{class:'comp-acc-head', onclick:()=>{
+        if(isOpen) carreraArtExpanded.delete(stateKey); else carreraArtExpanded.add(stateKey);
+        renderCarrera();
+      }},[
+        el('span',{class:'comp-acc-chevron'},'▸'),
+        el('b',{class:'comp-acc-badge'}, comp.label),
+        el('span',{class:'comp-acc-desc'}, comp.descripcion),
+        el('span',{class:'comp-acc-n'}, comp.asignaturas.length+' asignatura'+(comp.asignaturas.length===1?'':'s')),
+      ]);
+      item.appendChild(head);
+      if(isOpen){
+        const body = el('div',{class:'comp-acc-body'});
+        const chipWrap = el('div',{class:'asig-chip-wrap'});
+        comp.asignaturas.forEach(a=>{
+          const chip = el('span',{class:'asig-chip'}, a.nombre);
+          if(a.resultado) attachTip(chip, a.resultado);
+          chipWrap.appendChild(chip);
+        });
+        body.appendChild(chipWrap);
+        item.appendChild(body);
+      }
+      accordion.appendChild(item);
+    });
+    artCard.appendChild(accordion);
+    carreraBody.appendChild(artCard);
+  }
 }
 renderCarrera();
 

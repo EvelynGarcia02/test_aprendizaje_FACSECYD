@@ -147,6 +147,10 @@ table.heatmap th:first-child{width:52px;}
 table.heatmap td.heat-cell{text-align:center;font-weight:600;padding:12px 6px;border-bottom:2px solid var(--surface-1);border-radius:4px;cursor:pointer;transition:outline-color .12s;}
 table.heatmap td.heat-cell.selected{outline:2px solid var(--text-primary);outline-offset:-2px;}
 table.heatmap td:first-child{border-bottom:none;padding:8px 6px;}
+table.heatmap td.heat-comp-cell{cursor:pointer;border-radius:4px;transition:background .12s,outline-color .12s;}
+table.heatmap td.heat-comp-cell:hover{background:var(--gridline);}
+table.heatmap td.heat-comp-cell.selected{outline:2px solid var(--text-primary);outline-offset:-2px;background:var(--gridline);}
+table.heatmap td.heat-comp-cell .heat-comp-code{cursor:pointer;}
 .heat-comp-code{cursor:help;border-bottom:1px dotted var(--baseline);padding-bottom:1px;}
 .heat-comp-n{font-size:10px;font-weight:400;color:var(--text-muted);margin-top:2px;}
 table.heatmap td.meta-cell{text-align:center;padding:12px 4px;}
@@ -178,3 +182,18 @@ table.heatmap td.meta-cell{text-align:center;padding:12px 4px;}
 .gbar-col.selected{outline:2px solid var(--text-primary);outline-offset:1px;}
 .filter-chip{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;background:var(--gridline);color:var(--text-primary);padding:5px 8px 5px 12px;border-radius:999px;cursor:pointer;margin-bottom:12px;border:none;font-family:inherit;}
 .filter-chip .x{font-weight:700;font-size:13px;}
+
+.comp-accordion{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.comp-acc-item{border-bottom:1px solid var(--border);}
+.comp-acc-item:last-child{border-bottom:none;}
+.comp-acc-head{display:flex;align-items:baseline;gap:10px;width:100%;padding:12px 14px;background:var(--surface-1);border:none;cursor:pointer;font-family:inherit;text-align:left;}
+.comp-acc-item.open .comp-acc-head{background:var(--gridline);}
+.comp-acc-head:hover{background:var(--gridline);}
+.comp-acc-chevron{flex:none;font-size:10px;color:var(--text-muted);transition:transform .15s;}
+.comp-acc-item.open .comp-acc-chevron{transform:rotate(90deg);}
+.comp-acc-badge{flex:none;font-size:12.5px;font-weight:700;color:var(--text-primary);}
+.comp-acc-desc{flex:1;font-size:12.5px;color:var(--text-secondary);line-height:1.4;}
+.comp-acc-n{flex:none;font-size:11px;color:var(--text-muted);white-space:nowrap;}
+.comp-acc-body{padding:4px 14px 16px 38px;}
+.asig-chip-wrap{display:flex;flex-wrap:wrap;gap:6px;}
+.asig-chip{display:inline-block;font-size:12px;background:var(--gridline);color:var(--text-primary);padding:5px 10px;border-radius:8px;cursor:help;}
